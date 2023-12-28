@@ -316,8 +316,12 @@ xR = np.zeros(nodes,dtype=int)
 # We iterate over (n/3)-bit strings xR 
 # This is where most of the time is spent
 for flip_bit in gray_code:
-	# I suspect that 99% of the time is spent in this line:
-	status,xG,Gperp = solve(Gamma,sB^deltaB)
+	# quick test that does not require solving the linear system
+	status = (np.sum(xR*(sB^deltaB)) % 2)==0 and (np.sum(xR*(sG^deltaG)) % 2)==0
+	if status:
+		# I suspect that 99% of the time is spent in this line:
+		status,xG,Gperp = solve(Gamma,sB^deltaB)
+
 	# if status=='OK' then 
 	# xG is a solution of the linear system Gamma @ xG = sB (mod 2)
 	# and columns of Gperp span the nullspace of Gamma
@@ -356,7 +360,7 @@ amplitude/=(1<<nodes)
 print('Amplitude <s|U|00...0>=',amplitude)
 
 # test: compute the same amplitude by the brute force algorithm
-if n<=12:
+if n<=24:
 	N = 1<<n
 	psi = np.ones(N)
 	for i in range(N):
