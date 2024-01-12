@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <iostream>
+#include <assert.h>     /* assert */
 
 using std::endl;
 using std::cout;
@@ -195,7 +196,7 @@ void ExponentialSumReal(unsigned int n, clifford_circuit circ, bool &outZero, un
 int main()
 {
 // number of qubits
-unsigned int n = 4;
+unsigned int n = 48;
 
 assert(n<=64);
 
