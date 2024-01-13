@@ -59,13 +59,13 @@ impl Iterator for MonomialIterator {
                 if old_index > 1 {
                     return None;
                 }
-                return Some(tup[old_index]);
+                Some(tup[old_index])
             }
             Monomial::Three(tup) => {
                 if old_index > 2 {
                     return None;
                 }
-                return Some(tup[old_index]);
+                Some(tup[old_index])
             }
         }
     }

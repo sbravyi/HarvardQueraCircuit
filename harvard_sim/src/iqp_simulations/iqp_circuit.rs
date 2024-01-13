@@ -31,12 +31,12 @@ impl QubitColoring {
         coloring
     }
 
-    fn to_indexes(self) -> QubitColoringIndexes {
-        return QubitColoringIndexes {
+    fn into_indexes(self) -> QubitColoringIndexes {
+        QubitColoringIndexes {
             red: self.red.into_iter().map(|q| q.index).collect_vec(),
             green: self.green.into_iter().map(|q| q.index).collect_vec(),
             blue: self.blue.into_iter().map(|q| q.index).collect_vec(),
-        };
+        }
     }
 }
 
@@ -85,7 +85,7 @@ pub fn build_iqp_circuit(
             }
         }
     }
-    Ok((pp, c.to_indexes()))
+    Ok((pp, c.into_indexes()))
 }
 
 #[cfg(test)]

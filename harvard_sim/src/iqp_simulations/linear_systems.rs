@@ -1,9 +1,6 @@
 // Sergey's matrices Gamma, delta^B, and delta^G
 
-use anyhow::Result;
 use bitvec::vec::BitVec;
-use itertools::Itertools;
-use nalgebra::SimdBool;
 
 use crate::{bit_matrix::BitMatrix, phase_polynomial::PolynomialGraph};
 
@@ -20,11 +17,10 @@ pub struct LinearSystems {
 impl LinearSystems {
     pub fn new(params: &SimulationParams, phase_graph: &PolynomialGraph) -> Self {
         let nodes = params.nodes as usize;
-        let n_qubits = params.n_qubits as usize;
-        let mut gamma = BitMatrix {};
-        // for (b, g) in &phase_graph.bg_monomials {
-        //     gamma = gamma.emplace_at(1, *b as usize, *g as usize);
-        // }
+        let mut gamma = BitMatrix::zeroes(nodes, nodes);
+        for (b, g) in &phase_graph.bg_monomials {
+            gamma.set(*b as usize, *g as usize, true);
+        }
         let delta_b = bitvec![usize, Lsb0; 0; nodes];
         let delta_g = bitvec![usize, Lsb0; 0; nodes];
         let x_r = bitvec![usize, Lsb0; 0; nodes];
@@ -61,18 +57,24 @@ impl LinearSystems {
         let flip_index = flip_bit as usize;
         let to_flip = !self.x_r[flip_index];
         self.x_r.set(flip_index, to_flip);
-
+        for (h0, h1) in &phase_graph.rbg_monomials[&flip_bit] {
+            self.gamma.flip(*h0 as usize, *h1 as usize);
+        }
         let rb_monomials = &phase_graph.rb_monomials[&flip_bit];
         for h in rb_monomials {
             let h_index = *h as usize;
             let to_flip = !self.delta_b[h_index];
-            self.delta_b.set(flip_index, to_flip);
+            unsafe {
+                self.delta_b.set_unchecked(flip_index, to_flip);
+            }
         }
         let rg_monomials = &phase_graph.rg_monomials[&flip_bit];
         for h in rg_monomials {
             let h_index = *h as usize;
             let to_flip = !self.delta_g[h_index];
-            self.delta_g.set(flip_index, to_flip);
+            unsafe {
+                self.delta_g.set_unchecked(flip_index, to_flip);
+            }
         }
     }
 }
