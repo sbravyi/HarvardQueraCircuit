@@ -4,3 +4,4 @@ pub mod small_int_simulation;
 pub mod iqp_circuit;
 pub mod simulation_params;
 pub mod statevector;
+pub mod linear_systems;

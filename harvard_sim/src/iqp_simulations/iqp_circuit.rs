@@ -3,6 +3,7 @@ use crate::{
     qubit::{Color, Qubit},
 };
 use anyhow::Result;
+use itertools::Itertools;
 
 use super::simulation_params::SimulationParams;
 
@@ -29,9 +30,25 @@ impl QubitColoring {
         }
         coloring
     }
+
+    fn to_indexes(self) -> QubitColoringIndexes {
+        return QubitColoringIndexes {
+            red: self.red.into_iter().map(|q| q.index).collect_vec(),
+            green: self.green.into_iter().map(|q| q.index).collect_vec(),
+            blue: self.blue.into_iter().map(|q| q.index).collect_vec(),
+        };
+    }
 }
 
-pub fn build_iqp_circuit(params: &SimulationParams) -> Result<(PhasePolynomial, QubitColoring)> {
+pub struct QubitColoringIndexes {
+    pub red: Vec<u32>,
+    pub blue: Vec<u32>,
+    pub green: Vec<u32>,
+}
+
+pub fn build_iqp_circuit(
+    params: &SimulationParams,
+) -> Result<(PhasePolynomial, QubitColoringIndexes)> {
     let c = QubitColoring::new_for_n_qubits(params.n_qubits);
     let mut pp = PhasePolynomial::new();
     // apply the initial layer of "A-rectangles", see page 29 in
@@ -68,28 +85,23 @@ pub fn build_iqp_circuit(params: &SimulationParams) -> Result<(PhasePolynomial, 
             }
         }
     }
-    Ok((pp, c))
+    Ok((pp, c.to_indexes()))
 }
 
 #[cfg(test)]
 mod tests {
     use indexmap::IndexMap;
-    use itertools::Itertools;
 
     use super::*;
-
-    fn indexes(qbs: Vec<Qubit>) -> Vec<u32> {
-        qbs.into_iter().map(|q| q.index).collect_vec()
-    }
 
     #[test]
     fn test_iqp_construction() {
         let params = SimulationParams::new(2);
         let (pp, c) = build_iqp_circuit(&params).unwrap();
         let pg = pp.into_polynomial_graph().unwrap();
-        assert_eq!(indexes(c.red), vec![0, 3, 6, 9]);
-        assert_eq!(indexes(c.blue), vec![1, 4, 7, 10]);
-        assert_eq!(indexes(c.green), vec![2, 5, 8, 11]);
+        assert_eq!(c.red, vec![0, 3, 6, 9]);
+        assert_eq!(c.blue, vec![1, 4, 7, 10]);
+        assert_eq!(c.green, vec![2, 5, 8, 11]);
         assert_eq!(
             pg.rbg_monomials,
             IndexMap::<u32, Vec<(u32, u32)>>::from_iter(vec![
