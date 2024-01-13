@@ -1,9 +1,6 @@
 // Sergey's matrices Gamma, delta^B, and delta^G
 
-use anyhow::Result;
 use bitvec::vec::BitVec;
-use itertools::Itertools;
-use nalgebra::SimdBool;
 
 use crate::{bit_matrix::BitMatrix, phase_polynomial::PolynomialGraph};
 
@@ -21,7 +18,7 @@ impl LinearSystems {
     pub fn new(params: &SimulationParams, phase_graph: &PolynomialGraph) -> Self {
         let nodes = params.nodes as usize;
         let n_qubits = params.n_qubits as usize;
-        let mut gamma = BitMatrix {};
+        let mut gamma = BitMatrix::zeroes(nodes, nodes);
         // for (b, g) in &phase_graph.bg_monomials {
         //     gamma = gamma.emplace_at(1, *b as usize, *g as usize);
         // }
@@ -63,11 +60,7 @@ impl LinearSystems {
         self.x_r.set(flip_index, to_flip);
 
         let rb_monomials = &phase_graph.rb_monomials[&flip_bit];
-        for h in rb_monomials {
-            let h_index = *h as usize;
-            let to_flip = !self.delta_b[h_index];
-            self.delta_b.set(flip_index, to_flip);
-        }
+        self.delta_b ^= rb_monomials;
         let rg_monomials = &phase_graph.rg_monomials[&flip_bit];
         for h in rg_monomials {
             let h_index = *h as usize;

@@ -31,12 +31,12 @@ impl QubitColoring {
         coloring
     }
 
-    fn to_indexes(self) -> QubitColoringIndexes {
-        return QubitColoringIndexes {
+    fn into_indexes(self) -> QubitColoringIndexes {
+        QubitColoringIndexes {
             red: self.red.into_iter().map(|q| q.index).collect_vec(),
             green: self.green.into_iter().map(|q| q.index).collect_vec(),
             blue: self.blue.into_iter().map(|q| q.index).collect_vec(),
-        };
+        }
     }
 }
 
@@ -50,7 +50,7 @@ pub fn build_iqp_circuit(
     params: &SimulationParams,
 ) -> Result<(PhasePolynomial, QubitColoringIndexes)> {
     let c = QubitColoring::new_for_n_qubits(params.n_qubits);
-    let mut pp = PhasePolynomial::new();
+    let mut pp = PhasePolynomial::new(params);
     // apply the initial layer of "A-rectangles", see page 29 in
     // https://arxiv.org/pdf/2312.03982.pdf
     for i in 0..params.nodes as usize {
@@ -85,11 +85,12 @@ pub fn build_iqp_circuit(
             }
         }
     }
-    Ok((pp, c.to_indexes()))
+    Ok((pp, c.into_indexes()))
 }
 
 #[cfg(test)]
 mod tests {
+    use bitvec::prelude::*;
     use indexmap::IndexMap;
 
     use super::*;
@@ -128,11 +129,11 @@ mod tests {
         );
         assert_eq!(
             pg.rb_monomials,
-            IndexMap::<u32, Vec<u32>>::from_iter(vec![
-                (0, vec![1]),
-                (1, vec![0, 1]),
-                (3, vec![2]),
-                (2, vec![3, 2]),
+            IndexMap::<u32, BitVec>::from_iter(vec![
+                (0, bitvec![0, 1]),
+                (1, bitvec![1, 1]),
+                (3, bitvec![0, 0, 1]),
+                (2, bitvec![0, 0, 1, 1]),
             ])
         );
         assert_eq!(

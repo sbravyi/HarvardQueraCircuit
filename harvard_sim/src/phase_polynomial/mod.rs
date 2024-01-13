@@ -1,9 +1,10 @@
 use anyhow::{ensure, Result};
+use bitvec::prelude::*;
 use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 
-use crate::qubit::{Color, Qubit};
+use crate::{qubit::{Color, Qubit}, iqp_simulations::simulation_params::SimulationParams};
 
 #[derive(Hash, PartialEq, Eq, Debug, Clone)]
 enum Monomial {
@@ -100,11 +101,15 @@ impl IntoIterator for Monomial {
 #[derive(Default)]
 pub struct PhasePolynomial {
     monomials: IndexSet<Monomial>,
+    nodes: u32
 }
 
 impl PhasePolynomial {
-    pub fn new() -> Self {
-        Default::default()
+    pub fn new(params: &SimulationParams) -> Self {
+        Self {
+            nodes: params.nodes,
+            ..Default::default()
+        }
     }
 
     pub fn ccz(&mut self, q1: Qubit, q2: Qubit, q3: Qubit) -> Result<()> {
@@ -158,7 +163,7 @@ impl PhasePolynomial {
     pub fn into_polynomial_graph(self) -> Result<PolynomialGraph> {
         let mut rbg_monomials: IndexMap<u32, Vec<(u32, u32)>> = IndexMap::new();
         let mut rg_monomials: IndexMap<u32, Vec<u32>> = IndexMap::new();
-        let mut rb_monomials: IndexMap<u32, Vec<u32>> = IndexMap::new();
+        let mut rb_monomials: IndexMap<u32, BitVec> = IndexMap::new();
         let mut bg_monomials: Vec<(u32, u32)> = Vec::new();
         for monomial in self.monomials {
             let monomial_colors: HashMap<Color, u32> = Color::seperate_monomial_colors(monomial);
@@ -170,8 +175,10 @@ impl PhasePolynomial {
             } else if !monomial_colors.contains_key(&Color::Green) {
                 rb_monomials
                     .entry(*monomial_colors.get(&Color::Red).unwrap())
-                    .or_default()
-                    .push(*monomial_colors.get(&Color::Blue).unwrap());
+                    .or_insert_with(|| {
+                        bitvec![usize, Lsb0; 0; self.nodes as usize ]
+                    })
+                    .set(*monomial_colors.get(&Color::Blue).unwrap() as usize, true)
             } else if !monomial_colors.contains_key(&Color::Red) {
                 bg_monomials.push((
                     *monomial_colors.get(&Color::Blue).unwrap(),
@@ -201,7 +208,7 @@ impl PhasePolynomial {
 
 pub struct PolynomialGraph {
     pub rbg_monomials: IndexMap<u32, Vec<(u32, u32)>>,
-    pub rb_monomials: IndexMap<u32, Vec<u32>>,
+    pub rb_monomials: IndexMap<u32, BitVec>,
     pub rg_monomials: IndexMap<u32, Vec<u32>>,
     pub bg_monomials: Vec<(u32, u32)>,
 }
@@ -214,7 +221,7 @@ mod tests {
 
     #[test]
     fn test_phase_graph() {
-        let mut pp = PhasePolynomial::new();
+        let mut pp = PhasePolynomial::new(&SimulationParams::new(2));
         pp.ccz(Qubit::new(0), Qubit::new(5), Qubit::new(10)).unwrap();
         let pg = pp.into_polynomial_graph().unwrap();
         assert_eq!(
