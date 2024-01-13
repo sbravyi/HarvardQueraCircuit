@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, collections::HashMap};
 
 use strum_macros::EnumIter;
 
@@ -9,7 +9,20 @@ pub enum Color {
     Green,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+impl Color {
+    pub fn seperate_monomial_colors(monomial: impl IntoIterator<Item=Qubit>) -> HashMap<Color, u32> {
+        // when we only care about variables of a fixed color, variable index ranges between 0 and nodes-1
+        // hence the division by three
+        let monomial_colors: HashMap<Color, u32> = monomial
+            .into_iter()
+            .map(|q| (q.color, q.index / 3))
+            .collect();
+        monomial_colors
+    }
+}
+
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Qubit {
     pub index: u32,
     pub color: Color,

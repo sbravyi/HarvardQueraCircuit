@@ -9,6 +9,7 @@ edition = "2021"
 anyhow = "1.0.79"
 clap = { version = "4.4.15", features = ["derive"] }
 env_logger = "0.10.1"
+indexmap = "2.1.0"
 itertools = "0.12.0"
 log = "0.4.20"
 nalgebra = "0.32.3"

@@ -48,7 +48,7 @@ pub fn build_iqp_circuit(params: &SimulationParams) -> Result<(PhasePolynomial, 
         // cube nodes with even pariry = control qubits
         // cube nodes with odd parity = target qubits
         for x in 0..params.nodes as usize {
-            if x.count_ones() % 2 == 0 {
+            if x.count_ones() % 2 != 0 {
                 continue;
             }
             let y = x ^ (1 << direction) as usize;
@@ -73,8 +73,7 @@ pub fn build_iqp_circuit(params: &SimulationParams) -> Result<(PhasePolynomial, 
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
+    use indexmap::IndexMap;
     use itertools::Itertools;
 
     use super::*;
@@ -93,40 +92,40 @@ mod tests {
         assert_eq!(indexes(c.green), vec![2, 5, 8, 11]);
         assert_eq!(
             pg.rbg_monomials,
-            HashMap::<u32, Vec<(u32, u32)>>::from_iter(vec![
+            IndexMap::<u32, Vec<(u32, u32)>>::from_iter(vec![
                 (
                     0,
-                    vec![(3, 1), (1, 3), (1, 0), (0, 1), (3, 2), (2, 3), (1, 1),]
+                    vec![(1, 1), (0, 1), (1, 0), (3, 2), (2, 3), (3, 1), (1, 3)]
                 ),
-                (1, vec![(0, 1), (0, 3), (3, 0), (0, 0), (1, 0), (1, 1)]),
-                (2, vec![(3, 2), (2, 3), (2, 2), (0, 3), (3, 0), (3, 3)]),
+                (1, vec![(0, 1), (1, 0), (0, 0), (3, 0), (0, 3), (1, 1)]),
+                (2, vec![(3, 2), (2, 3), (3, 3), (0, 3), (3, 0), (2, 2)]),
                 (
                     3,
-                    vec![(0, 1), (3, 2), (2, 2), (2, 3), (2, 0), (1, 0), (0, 2)]
+                    vec![(2, 2), (3, 2), (2, 3), (0, 2), (2, 0), (0, 1), (1, 0)]
                 )
             ])
         );
         assert_eq!(
             pg.rg_monomials,
-            HashMap::<u32, Vec<u32>>::from_iter(vec![
+            IndexMap::<u32, Vec<u32>>::from_iter(vec![
                 (0, vec![1, 2]),
-                (1, vec![3, 0]),
+                (1, vec![0, 3]),
                 (2, vec![3, 0]),
                 (3, vec![2, 1]),
             ])
         );
         assert_eq!(
             pg.rb_monomials,
-            HashMap::<u32, Vec<u32>>::from_iter(vec![
+            IndexMap::<u32, Vec<u32>>::from_iter(vec![
                 (0, vec![1]),
-                (1, vec![1, 0]),
-                (2, vec![2, 3]),
+                (1, vec![0, 1]),
                 (3, vec![2]),
+                (2, vec![3, 2]),
             ])
         );
         assert_eq!(
             pg.bg_monomials,
-            vec![(1, 1), (1, 0), (0, 1), (3, 2), (2, 3), (2, 2),]
+            vec![(0, 1), (1, 0), (3, 2), (2, 3), (1, 1), (2, 2)]
         );
     }
 }
