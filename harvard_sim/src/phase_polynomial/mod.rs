@@ -107,15 +107,6 @@ impl PhasePolynomial {
         Default::default()
     }
 
-    pub fn debug_monomials(&self) -> String {
-        let monomials = self
-            .monomials
-            .clone()
-            .into_iter()
-            .map(|m| m.into_iter().map(|q| q.index).collect_vec());
-        format!("{:#?}", monomials.collect_vec())
-    }
-
     pub fn ccz(&mut self, q1: Qubit, q2: Qubit, q3: Qubit) -> Result<()> {
         ensure!(HashSet::from([q1.color, q2.color, q3.color]).len() == 3);
         let mut qubits = [q1, q2, q3];

@@ -23,14 +23,6 @@ impl CPUSmallIntSimulation {
 
 impl Simulation for CPUSmallIntSimulation {
     fn run(&mut self) -> Result<()> {
-        let start = Instant::now();
-        let (phase_polynomial, coloring) =
-            build_iqp_circuit(&self.params).context("Building IQP circuit")?;
-        let QubitColoring { red, green, blue } = coloring;
-        let phase_graph = phase_polynomial
-            .into_polynomial_graph()
-            .context("converting phase polynomial into graph")?;
-        let gc_flip_bit = GrayCodeFlipBit::new(self.params.nodes);
         let s = generate_random_statevector(&self.params);
         log::debug!(
             "Statevector: <{}|",
@@ -39,6 +31,14 @@ impl Simulation for CPUSmallIntSimulation {
                 .collect_vec()
                 .join("")
         );
+        let start = Instant::now();
+        let (phase_polynomial, coloring) =
+            build_iqp_circuit(&self.params).context("Building IQP circuit")?;
+        let QubitColoring { red, green, blue } = coloring;
+        let phase_graph = phase_polynomial
+            .into_polynomial_graph()
+            .context("converting phase polynomial into graph")?;
+        let gc_flip_bit = GrayCodeFlipBit::new(self.params.nodes);
         let s_r = s
             .keep_only_positions(&red.into_iter().map(|q| q.index as usize).collect_vec())
             .context("collecting red components of statevector")?;
@@ -57,7 +57,7 @@ impl Simulation for CPUSmallIntSimulation {
                 .context("updating flip bit")?;
         }
         let end = Instant::now();
-        println!("Time to execute: {:#?}", end - start);
+        log::debug!("Time to execute: {:#?}", end - start);
         Ok(())
     }
 }
