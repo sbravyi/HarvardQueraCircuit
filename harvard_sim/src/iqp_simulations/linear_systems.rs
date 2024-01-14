@@ -15,16 +15,16 @@ use super::simulation_params::SimulationParams;
 use bitvec::prelude::*;
 
 pub struct LinearSystems {
-    gamma: BitMatrix,
-    delta_b: BitVec,
-    delta_g: BitVec,
-    x_r: BitVec,
-    gj: GaussJordan,
-    solver: BackwardsSubstitution,
+    pub gamma: BitMatrix,
+    pub delta_b: BitVec,
+    pub delta_g: BitVec,
+    pub x_r: BitVec,
+    pub gj: GaussJordan,
+    pub solver: BackwardsSubstitution,
     // caching allocations for
     // often used intermediary vectors
-    sb_delta_b: BitVec,
-    sg_delta_g: BitVec,
+    pub sb_delta_b: BitVec,
+    pub sg_delta_g: BitVec,
 }
 
 impl LinearSystems {
@@ -95,18 +95,18 @@ impl LinearSystems {
         if not_in_nullspace {
             self.gj.copy_from_matrix(&self.gamma);
             self.gj.go_to_echelon_form();
-            let rank = self.gj.rank();
             self.solver.solve(&self.gj, &self.sb_delta_b)?;
             let xg = &mut self.solver.solution;
+            let rank = self.gj.rank;
             let has_amplitude_contributions = (rank == self.gj.number_of_columns)
                 || (!is_in_nullspace(&self.gamma, &self.sg_delta_g));
             if !has_amplitude_contributions {
                 return None;
             }
             let mut sg_delta_g_xg_overlap = 0;
-            for (idx, bit) in self.delta_g.iter().by_vals().enumerate() {
-                let xg_i = xg[idx];
-                if xg_i & bit {
+            for (idx, bit) in xg.iter().by_vals().enumerate() {
+                let sg_delta_g_i = self.sg_delta_g[idx];
+                if sg_delta_g_i & bit {
                     sg_delta_g_xg_overlap += 1;
                 }
             }

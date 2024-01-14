@@ -6,6 +6,7 @@ pub struct GaussJordan {
     pub number_of_columns: usize,
     active_column: usize,
     pub rows: Vec<BitVec>,
+    pub rank: usize,
 }
 
 impl GaussJordan {
@@ -14,11 +15,8 @@ impl GaussJordan {
             number_of_columns: cols,
             active_column: 0,
             rows: (0..rows).map(|_| bitvec![usize, Lsb0; 0; cols ]).collect(),
+            rank: 0,
         }
-    }
-
-    pub fn rank(&self) -> usize {
-        return self.rows.iter().filter(|bv| bv.first_one().is_some() ).count()
     }
 
     // allows one to run gauss jordan on matrices of the same shape many times
@@ -27,6 +25,7 @@ impl GaussJordan {
         debug_assert_eq!(m.number_of_columns, self.number_of_columns);
         debug_assert_eq!(m.rows.len(), self.rows.len());
         self.active_column = 0;
+        self.rank = 0;
         for (idx, row) in m.rows.iter().enumerate() {
             self.rows[idx].copy_from_bitslice(&row[..]);
         }
@@ -37,7 +36,13 @@ impl GaussJordan {
             self.pivot_active_column();
             self.go_to_next_column();
         }
-        self.rows.sort_by_key(|row| row.first_one().unwrap_or(usize::MAX));
+        self.rows
+            .sort_by_cached_key(|row| row.first_one().unwrap_or(usize::MAX));
+        for row in &mut self.rows {
+            if row.first_one().is_some() {
+                self.rank += 1;
+            }
+        }
     }
 
     fn is_not_in_echelon_form(&self) -> bool {
@@ -152,12 +157,7 @@ mod test {
         // [1, 1, 0, 0]
         // [0, 0, 0, 0]
         // [1, 0, 0, 1]
-        let rows: Vec<Vec<usize>> = vec![
-            vec![1, 3],
-            vec![0, 1],
-            vec![],
-            vec![0, 3],
-        ];
+        let rows: Vec<Vec<usize>> = vec![vec![1, 3], vec![0, 1], vec![], vec![0, 3]];
         let mut matrix = BitMatrix::zeroes(4, 4);
         for (ridx, r) in rows.iter().enumerate() {
             for cidx in r {
