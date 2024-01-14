@@ -6,6 +6,7 @@ pub struct GaussJordan {
     pub number_of_columns: usize,
     active_column: usize,
     pub rows: Vec<BitVec>,
+    pub rank: usize
 }
 
 impl GaussJordan {
@@ -14,6 +15,7 @@ impl GaussJordan {
             number_of_columns: cols,
             active_column: 0,
             rows: (0..rows).map(|_| bitvec![usize, Lsb0; 0; cols ]).collect(),
+            rank: 0
         }
     }
 
@@ -27,6 +29,7 @@ impl GaussJordan {
         debug_assert_eq!(m.number_of_columns, self.number_of_columns);
         debug_assert_eq!(m.rows.len(), self.rows.len());
         self.active_column = 0;
+        self.rank = 0;
         for (idx, row) in m.rows.iter().enumerate() {
             self.rows[idx].copy_from_bitslice(&row[..]);
         }
@@ -37,7 +40,14 @@ impl GaussJordan {
             self.pivot_active_column();
             self.go_to_next_column();
         }
-        self.rows.sort_by_key(|row| row.first_one().unwrap_or(usize::MAX));
+        self.rows.sort_by_cached_key(|row| {
+            if let Some(pivot) = row.first_one() {
+                self.rank += 1;
+                pivot
+            } else {
+                usize::MAX
+            }
+        });
     }
 
     fn is_not_in_echelon_form(&self) -> bool {

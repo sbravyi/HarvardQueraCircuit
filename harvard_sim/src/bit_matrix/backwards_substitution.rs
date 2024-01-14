@@ -21,7 +21,7 @@ impl BackwardsSubstitution {
             i -= 1;
             let mut tmp = b[i];
             let row = &u.rows[i];
-            if row.first_one().is_none() {
+            if i >= u.rank {
                 if tmp {
                     // zero row and b[j] != 0 means there's no
                     // solution to Ux = b

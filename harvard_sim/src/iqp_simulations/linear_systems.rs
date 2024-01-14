@@ -95,7 +95,7 @@ impl LinearSystems {
         if not_in_nullspace {
             self.gj.copy_from_matrix(&self.gamma);
             self.gj.go_to_echelon_form();
-            let rank = self.gj.rank();
+            let rank = self.gj.rank;
             self.solver.solve(&self.gj, &self.sb_delta_b)?;
             let xg = &mut self.solver.solution;
             let has_amplitude_contributions = (rank == self.gj.number_of_columns)
