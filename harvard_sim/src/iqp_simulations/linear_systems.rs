@@ -129,7 +129,9 @@ impl LinearSystems {
     pub fn update_with_flip_bit(&mut self, flip_bit: u32, phase_graph: &PolynomialGraph) {
         let flip_index = flip_bit as usize;
         let to_flip = !self.x_r[flip_index];
-        self.x_r.set(flip_index, to_flip);
+        unsafe {
+            self.x_r.set_unchecked(flip_index, to_flip);
+        }
         for (h0, h1) in &phase_graph.rbg_monomials[&flip_bit] {
             self.gamma.flip(*h0 as usize, *h1 as usize);
         }
@@ -138,7 +140,7 @@ impl LinearSystems {
             let h_index = *h as usize;
             let to_flip = !self.delta_b[h_index];
             unsafe {
-                self.delta_b.set_unchecked(flip_index, to_flip);
+                self.delta_b.set_unchecked(h_index, to_flip);
             }
         }
         let rg_monomials = &phase_graph.rg_monomials[&flip_bit];
@@ -146,7 +148,7 @@ impl LinearSystems {
             let h_index = *h as usize;
             let to_flip = !self.delta_g[h_index];
             unsafe {
-                self.delta_g.set_unchecked(flip_index, to_flip);
+                self.delta_g.set_unchecked(h_index, to_flip);
             }
         }
     }
