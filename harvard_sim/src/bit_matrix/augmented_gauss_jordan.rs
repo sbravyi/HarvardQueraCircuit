@@ -2,19 +2,19 @@ use bitvec::prelude::*;
 
 use super::matrix::BitMatrix;
 
-pub struct GaussJordan {
+pub struct AugmentedGaussJordan {
     pub number_of_columns: usize,
-    pub last_col_idx: usize,
+    pub augmented_col_n: usize,
     active_column: usize,
     pub rows: Vec<BitVec>,
     pub rank: usize,
 }
 
-impl GaussJordan {
+impl AugmentedGaussJordan {
     pub fn zero(rows: usize, cols: usize) -> Self {
         Self {
             number_of_columns: cols,
-            last_col_idx: cols - 1,
+            augmented_col_n: cols - 1,
             active_column: 0,
             rows: (0..rows).map(|_| bitvec![usize, Lsb0; 0; cols]).collect(),
             rank: 0,
@@ -36,16 +36,16 @@ impl GaussJordan {
     // allows one to run gauss jordan on matrices of the same shape many times
     // without extra allocations, provided the matrix is the same shape.
     pub fn copy_from_augmented_system(&mut self, m: &BitMatrix, b: &BitVec) {
-        debug_assert_eq!(m.number_of_columns, self.last_col_idx);
+        debug_assert_eq!(m.number_of_columns, self.augmented_col_n);
         debug_assert_eq!(m.rows.len(), self.rows.len());
         self.active_column = 0;
         self.rank = 0;
         for (idx, row) in m.rows.iter().enumerate() {
-            self.rows[idx][..self.last_col_idx].copy_from_bitslice(&row[..]);
+            self.rows[idx][..self.augmented_col_n].copy_from_bitslice(&row[..]);
         }
         for (idx, b) in b.iter().enumerate() {
             unsafe {
-                self.rows[idx].set_unchecked(self.last_col_idx, *b);
+                self.rows[idx].set_unchecked(self.augmented_col_n, *b);
             }
         }
     }
@@ -55,14 +55,17 @@ impl GaussJordan {
             self.pivot_active_column();
             self.go_to_next_column();
         }
-        self.rows.sort_by_cached_key(|row| {
-            if let Some(pivot) = row.first_one() {
+        self.sort_rows();
+    }
+
+    fn sort_rows(&mut self) {
+        self.rows
+            .sort_by_cached_key(|row| row.first_one().unwrap_or(usize::MAX));
+        for row in &mut self.rows {
+            if row.first_one().is_some() {
                 self.rank += 1;
-                pivot
-            } else {
-                usize::MAX
             }
-        });
+        }
     }
 
     fn is_not_in_echelon_form(&self) -> bool {
@@ -96,11 +99,7 @@ impl GaussJordan {
         let mut row_index = 0;
         while row_index < self.rows.len() {
             if self.row_at_index_start_at_active_column(row_index) {
-                for (idx, mut bit) in self.rows[row_index].iter_mut().enumerate() {
-                    unsafe {   
-                        *bit ^= *pivot.get_unchecked(idx);
-                    }
-                }
+                self.rows[row_index] ^= pivot;
             }
             row_index += 1;
         }
@@ -133,7 +132,7 @@ mod test {
                 matrix.set(ridx, *cidx, true)
             }
         }
-        let mut gj = GaussJordan::zero(4, 7);
+        let mut gj = AugmentedGaussJordan::zero(4, 7);
         gj.copy_from_matrix(&matrix);
         gj.go_to_echelon_form();
         assert_eq!(
@@ -158,7 +157,7 @@ mod test {
                 matrix.set(ridx, *cidx, true)
             }
         }
-        let mut gj = GaussJordan::zero(rows.len(), 7);
+        let mut gj = AugmentedGaussJordan::zero(rows.len(), 7);
         gj.copy_from_matrix(&matrix);
         gj.go_to_echelon_form();
 
@@ -188,7 +187,7 @@ mod test {
                 matrix.set(ridx, *cidx, true)
             }
         }
-        let mut gj = GaussJordan::zero(4, 4);
+        let mut gj = AugmentedGaussJordan::zero(4, 4);
         gj.copy_from_matrix(&matrix);
         gj.go_to_echelon_form();
         assert_eq!(

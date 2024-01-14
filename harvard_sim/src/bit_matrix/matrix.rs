@@ -22,7 +22,9 @@ impl BitMatrix {
     }
 
     pub fn flip(&mut self, r: usize, c: usize) {
-        let flip_val = !self.rows[r][c];
-        unsafe { self.rows[r].set_unchecked(c, flip_val) }
+        unsafe {
+            let mut val = self.rows[r].get_unchecked_mut(c);
+            *val = !*val;
+        }
     }
 }

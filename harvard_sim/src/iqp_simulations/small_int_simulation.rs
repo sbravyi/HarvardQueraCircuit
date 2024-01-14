@@ -47,6 +47,7 @@ impl Simulation for CPUSmallIntSimulation {
             }
             ls.update_with_flip_bit(flip_bit, &phase_graph);
         }
+        amplitude /= (1 << self.params.nodes) as f64;
         let end = Instant::now();
         log::debug!("Time to execute: {:#?}", end - start);
         println!(
