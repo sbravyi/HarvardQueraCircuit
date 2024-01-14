@@ -36,7 +36,7 @@ impl GaussJordan {
             self.pivot_active_column();
             self.go_to_next_column();
         }
-        self.rows.sort_by_key(|row| row.first_one());
+        self.rows.sort_by_key(|row| row.first_one().unwrap_or(usize::MAX));
     }
 
     fn is_not_in_echelon_form(&self) -> bool {
@@ -131,15 +131,16 @@ mod test {
         let mut gj = GaussJordan::zero(rows.len(), 7);
         gj.copy_from_matrix(&matrix);
         gj.go_to_echelon_form();
+
         assert_eq!(
             gj.rows.iter().map(|bv| bv.to_string()).collect_vec(),
             vec![
-                "[0, 0, 0, 0, 0, 0, 0]",
-                "[0, 0, 0, 0, 0, 0, 0]",
                 "[1, 1, 1, 0, 0, 0, 0]",
                 "[0, 1, 1, 1, 0, 0, 0]",
                 "[0, 0, 0, 1, 1, 1, 0]",
-                "[0, 0, 0, 0, 0, 1, 1]"
+                "[0, 0, 0, 0, 0, 1, 1]",
+                "[0, 0, 0, 0, 0, 0, 0]",
+                "[0, 0, 0, 0, 0, 0, 0]"
             ]
         );
     }

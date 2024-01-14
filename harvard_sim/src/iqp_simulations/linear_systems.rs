@@ -4,7 +4,10 @@ use anyhow::Result;
 use bitvec::vec::BitVec;
 use itertools::{min, Itertools};
 
-use crate::{bit_matrix::{matrix::BitMatrix, gauss_jordan::GaussJordan}, phase_polynomial::PolynomialGraph};
+use crate::{
+    bit_matrix::{gauss_jordan::GaussJordan, matrix::BitMatrix},
+    phase_polynomial::PolynomialGraph,
+};
 
 use super::simulation_params::SimulationParams;
 use bitvec::prelude::*;
@@ -14,7 +17,7 @@ pub struct LinearSystems {
     pub delta_b: BitVec,
     pub delta_g: BitVec,
     pub x_r: BitVec,
-    pub gj: GaussJordan
+    pub gj: GaussJordan,
 }
 
 impl LinearSystems {
@@ -33,7 +36,7 @@ impl LinearSystems {
             delta_b,
             delta_g,
             x_r,
-            gj
+            gj,
         }
     }
 
