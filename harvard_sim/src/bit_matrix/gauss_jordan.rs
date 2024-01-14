@@ -24,8 +24,9 @@ impl GaussJordan {
     // allows one to run gauss jordan on matrices of the same shape many times
     // without extra allocations, provided the matrix is the same shape.
     pub fn copy_from_matrix(&mut self, m: &BitMatrix) {
-        assert_eq!(m.number_of_columns, self.number_of_columns);
-        assert_eq!(m.rows.len(), self.rows.len());
+        debug_assert_eq!(m.number_of_columns, self.number_of_columns);
+        debug_assert_eq!(m.rows.len(), self.rows.len());
+        self.active_column = 0;
         for (idx, row) in m.rows.iter().enumerate() {
             self.rows[idx].copy_from_bitslice(&row[..]);
         }
@@ -143,5 +144,37 @@ mod test {
                 "[0, 0, 0, 0, 0, 0, 0]"
             ]
         );
+    }
+
+    #[test]
+    fn test_b2_input() {
+        // [0, 1, 0, 1]
+        // [1, 1, 0, 0]
+        // [0, 0, 0, 0]
+        // [1, 0, 0, 1]
+        let rows: Vec<Vec<usize>> = vec![
+            vec![1, 3],
+            vec![0, 1],
+            vec![],
+            vec![0, 3],
+        ];
+        let mut matrix = BitMatrix::zeroes(4, 4);
+        for (ridx, r) in rows.iter().enumerate() {
+            for cidx in r {
+                matrix.set(ridx, *cidx, true)
+            }
+        }
+        let mut gj = GaussJordan::zero(4, 4);
+        gj.copy_from_matrix(&matrix);
+        gj.go_to_echelon_form();
+        assert_eq!(
+            gj.rows.iter().map(|bv| bv.to_string()).collect_vec(),
+            vec![
+                "[1, 1, 0, 0]",
+                "[0, 1, 0, 1]",
+                "[0, 0, 0, 0]",
+                "[0, 0, 0, 0]",
+            ]
+        )
     }
 }

@@ -64,7 +64,6 @@ impl LinearSystems {
         s_r: &BitVec,
     ) -> Option<f64> {
         let mut s_b_xr_overlap_bits = 0;
-        // let min_length: usize = min([s_b.len(), self.delta_b.len(), self.x_r.len()]).unwrap();
         for (idx, bit) in s_b.iter().by_vals().enumerate() {
             let delta = self.delta_b[idx];
             let xord = bit ^ delta;
@@ -98,16 +97,16 @@ impl LinearSystems {
             self.gj.go_to_echelon_form();
             let rank = self.gj.rank();
             self.solver.solve(&self.gj, &self.sb_delta_b)?;
-            let xg = &self.solver.solution;
+            let xg = &mut self.solver.solution;
             let has_amplitude_contributions = (rank == self.gj.number_of_columns)
                 || (!is_in_nullspace(&self.gamma, &self.sg_delta_g));
             if !has_amplitude_contributions {
                 return None;
             }
             let mut sg_delta_g_xg_overlap = 0;
-            for (idx, bit) in xg.iter().by_vals().enumerate() {
-                let sg_delta_g_i = self.sg_delta_g[idx];
-                if sg_delta_g_i & bit {
+            for (idx, bit) in self.delta_g.iter().by_vals().enumerate() {
+                let xg_i = xg[idx];
+                if xg_i & bit {
                     sg_delta_g_xg_overlap += 1;
                 }
             }
