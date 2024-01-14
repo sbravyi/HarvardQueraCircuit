@@ -3,7 +3,8 @@ use super::{
     statevector::generate_random_statevector,
 };
 use crate::{
-    gray_code_flip_bit::GrayCodeFlipBit, iqp_simulations::{iqp_circuit::QubitColoringIndexes, linear_systems::LinearSystems},
+    gray_code_flip_bit::GrayCodeFlipBit,
+    iqp_simulations::{iqp_circuit::QubitColoringIndexes, linear_systems::LinearSystems},
 };
 use anyhow::{Context, Result};
 use bitvec::vec::BitVec;
@@ -25,7 +26,7 @@ impl CPUSmallIntSimulation {
 impl Simulation for CPUSmallIntSimulation {
     fn run(&mut self) -> Result<()> {
         let start = Instant::now();
-        let s = generate_random_statevector(&self.params);
+        let s: BitVec = generate_random_statevector(&self.params);
         let (phase_polynomial, coloring) =
             build_iqp_circuit(&self.params).context("Building IQP circuit")?;
         let QubitColoringIndexes { red, green, blue } = coloring;
@@ -33,42 +34,25 @@ impl Simulation for CPUSmallIntSimulation {
             .into_polynomial_graph()
             .context("converting phase polynomial into graph")?;
         let gc_flip_bit = GrayCodeFlipBit::new(self.params.nodes);
-        let s_r: BitVec = s
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, _)| {
-                if red.contains(&(idx as u32)) {
-                    Some(idx)
-                } else {
-                    None
-                }
+        let s_r: BitVec = red.iter()
+            .map(|idx| {
+                s[*idx as usize]
             })
             .collect();
-        let s_b: BitVec = s
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, _)| {
-                if blue.contains(&(idx as u32)) {
-                    Some(idx)
-                } else {
-                    None
-                }
+        let s_b: BitVec = blue.iter()
+            .map(|idx| {
+                s[*idx as usize]
             })
             .collect();
-        let s_g: BitVec = s
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, _)| {
-                if green.contains(&(idx as u32)) {
-                    Some(idx)
-                } else {
-                    None
-                }
+        let s_g: BitVec = green.iter()
+            .map(|idx| {
+                s[*idx as usize]
             })
             .collect();
         let mut amplitude: f64 = 0.0;
         let mut ls = LinearSystems::new(&self.params, &phase_graph);
         for flip_bit in gc_flip_bit {
+            if let Some(()) = ls.solve_if_gamma_null_space_quick_check(&s_b, &s_g)? {}
             ls.update_with_flip_bit(flip_bit, &phase_graph);
         }
         let end = Instant::now();
