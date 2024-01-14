@@ -4,23 +4,29 @@ use super::matrix::BitMatrix;
 
 pub struct GaussJordan {
     pub number_of_columns: usize,
+    pub last_col_idx: usize,
     active_column: usize,
     pub rows: Vec<BitVec>,
-    pub rank: usize
+    pub rank: usize,
 }
 
 impl GaussJordan {
     pub fn zero(rows: usize, cols: usize) -> Self {
         Self {
             number_of_columns: cols,
+            last_col_idx: cols - 1,
             active_column: 0,
-            rows: (0..rows).map(|_| bitvec![usize, Lsb0; 0; cols ]).collect(),
-            rank: 0
+            rows: (0..rows).map(|_| bitvec![usize, Lsb0; 0; cols]).collect(),
+            rank: 0,
         }
     }
 
     pub fn rank(&self) -> usize {
-        return self.rows.iter().filter(|bv| bv.first_one().is_some() ).count()
+        return self
+            .rows
+            .iter()
+            .filter(|bv| bv.first_one().is_some())
+            .count();
     }
 
     // allows one to run gauss jordan on matrices of the same shape many times
@@ -32,6 +38,23 @@ impl GaussJordan {
         self.rank = 0;
         for (idx, row) in m.rows.iter().enumerate() {
             self.rows[idx].copy_from_bitslice(&row[..]);
+        }
+    }
+
+    // allows one to run gauss jordan on matrices of the same shape many times
+    // without extra allocations, provided the matrix is the same shape.
+    pub fn copy_from_augmented_system(&mut self, m: &BitMatrix, b: &BitVec) {
+        debug_assert_eq!(m.number_of_columns, self.last_col_idx);
+        debug_assert_eq!(m.rows.len(), self.rows.len());
+        self.active_column = 0;
+        self.rank = 0;
+        for (idx, row) in m.rows.iter().enumerate() {
+            self.rows[idx][..self.last_col_idx].copy_from_bitslice(&row[..]);
+        }
+        for (idx, b) in b.iter().enumerate() {
+            unsafe {
+                self.rows[idx].set_unchecked(self.last_col_idx, *b);
+            }
         }
     }
 
@@ -162,12 +185,7 @@ mod test {
         // [1, 1, 0, 0]
         // [0, 0, 0, 0]
         // [1, 0, 0, 1]
-        let rows: Vec<Vec<usize>> = vec![
-            vec![1, 3],
-            vec![0, 1],
-            vec![],
-            vec![0, 3],
-        ];
+        let rows: Vec<Vec<usize>> = vec![vec![1, 3], vec![0, 1], vec![], vec![0, 3]];
         let mut matrix = BitMatrix::zeroes(4, 4);
         for (ridx, r) in rows.iter().enumerate() {
             for cidx in r {
