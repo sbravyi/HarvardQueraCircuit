@@ -1,12 +1,10 @@
 // Sergey's matrices Gamma, delta^B, and delta^G
 
-use std::ops::{BitAnd, BitXor};
-
 use anyhow::Result;
 use bitvec::vec::BitVec;
-use itertools::min;
+use itertools::{min, Itertools};
 
-use crate::{bit_matrix::BitMatrix, phase_polynomial::PolynomialGraph};
+use crate::{bit_matrix::{matrix::BitMatrix, gauss_jordan::GaussJordan}, phase_polynomial::PolynomialGraph};
 
 use super::simulation_params::SimulationParams;
 use bitvec::prelude::*;
@@ -16,6 +14,7 @@ pub struct LinearSystems {
     pub delta_b: BitVec,
     pub delta_g: BitVec,
     pub x_r: BitVec,
+    pub gj: GaussJordan
 }
 
 impl LinearSystems {
@@ -28,19 +27,21 @@ impl LinearSystems {
         let delta_b = bitvec![usize, Lsb0; 0; nodes];
         let delta_g = bitvec![usize, Lsb0; 0; nodes];
         let x_r = bitvec![usize, Lsb0; 0; nodes];
+        let mut gj = GaussJordan::zero(nodes, nodes);
         Self {
             gamma,
             delta_b,
             delta_g,
             x_r,
+            gj
         }
     }
 
     pub fn solve_if_gamma_null_space_quick_check(
-        &self,
+        &mut self,
         s_b: &BitVec,
         s_g: &BitVec,
-    ) -> Result<Option<()>> {
+    ) -> Result<Option<usize>> {
         let mut s_b_xr_overlap_bits = 0;
         let min_length = min([s_b.len(), self.delta_b.len(), self.x_r.len()]).unwrap();
         for (idx, bit) in s_b[0..min_length].iter().by_vals().enumerate() {
@@ -64,12 +65,12 @@ impl LinearSystems {
         let s_g_xr_overlap_even_parity = s_g_xr_overlap_bits % 2 == 0;
         let not_in_nullspace = s_b_xr_overlap_even_parity && s_g_xr_overlap_even_parity;
         if not_in_nullspace {
-            // let solution = self
-            //     .gamma
-            //     .solve(&s_b_difference)
-            //     .context("solving Gamma * X = sB^deltaB")?;
+            self.gj.copy_from_matrix(&self.gamma);
+            self.gj.go_to_echelon_form();
+            let rank = self.gj.rank();
+            return Ok(Some(rank));
         }
-        Ok(Some(()))
+        Ok(None)
     }
 
     pub fn update_with_flip_bit(&mut self, flip_bit: u32, phase_graph: &PolynomialGraph) {

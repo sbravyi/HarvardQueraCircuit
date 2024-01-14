@@ -52,7 +52,8 @@ impl Simulation for CPUSmallIntSimulation {
         let mut amplitude: f64 = 0.0;
         let mut ls = LinearSystems::new(&self.params, &phase_graph);
         for flip_bit in gc_flip_bit {
-            if let Some(()) = ls.solve_if_gamma_null_space_quick_check(&s_b, &s_g)? {}
+            if let Some(rank) = ls.solve_if_gamma_null_space_quick_check(&s_b, &s_g)? {
+            }
             ls.update_with_flip_bit(flip_bit, &phase_graph);
         }
         let end = Instant::now();
