@@ -52,8 +52,6 @@ impl BackwardsSubstitution {
 
 #[cfg(test)]
 mod test {
-    use itertools::Itertools;
-
     use crate::bit_matrix::matrix::BitMatrix;
 
     use super::*;
