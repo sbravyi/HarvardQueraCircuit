@@ -5,8 +5,8 @@ use num_traits::Pow;
 
 use crate::{
     bit_matrix::{
-        backwards_substitution::BackwardsSubstitution, gauss_jordan::GaussJordan,
-        is_in_nullspace::is_in_nullspace, matrix::BitMatrix,
+        backwards_substitution::BackwardsSubstitution, is_in_nullspace::is_in_nullspace,
+        matrix::BitMatrix,
     },
     phase_polynomial::PolynomialGraph,
 };
@@ -19,7 +19,6 @@ pub struct LinearSystems {
     pub delta_b: BitVec,
     pub delta_g: BitVec,
     pub x_r: BitVec,
-    pub gj: GaussJordan,
     pub solver: BackwardsSubstitution,
     // caching allocations for
     // often used intermediary vectors
@@ -42,7 +41,6 @@ impl LinearSystems {
         let sb_delta_b = bitvec![usize, Lsb0; 0; nodes];
         let sg_delta_g = bitvec![usize, Lsb0; 0; nodes];
         let x_r = bitvec![usize, Lsb0; 0; nodes];
-        let gj = GaussJordan::zero(nodes, nodes);
         let solver = BackwardsSubstitution::zero(nodes);
         Self {
             gamma,
@@ -51,7 +49,6 @@ impl LinearSystems {
             sb_delta_b,
             sg_delta_g,
             x_r,
-            gj,
             solver,
         }
     }
@@ -93,12 +90,10 @@ impl LinearSystems {
         let s_g_xr_overlap_even_parity = s_g_xr_overlap_bits % 2 == 0;
         let not_in_nullspace = s_b_xr_overlap_even_parity && s_g_xr_overlap_even_parity;
         if not_in_nullspace {
-            self.gj.copy_from_matrix(&self.gamma);
-            self.gj.go_to_echelon_form();
-            self.solver.solve(&self.gj, &self.sb_delta_b)?;
+            self.solver.solve(&self.gamma, &self.sb_delta_b)?;
             let xg = &mut self.solver.solution;
-            let rank = self.gj.rank;
-            let has_amplitude_contributions = (rank == self.gj.number_of_columns)
+            let rank = self.solver.gj.rank;
+            let has_amplitude_contributions = (rank == self.solver.gj.number_of_columns)
                 || (!is_in_nullspace(&self.gamma, &self.sg_delta_g));
             if !has_amplitude_contributions {
                 return None;

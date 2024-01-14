@@ -315,7 +315,7 @@ xR = np.zeros(nodes,dtype=int)
 # WARNING: exponentially big loop ! 
 # We iterate over (n/3)-bit strings xR 
 # This is where most of the time is spent
-for flip_bit in gray_code:
+for i, flip_bit in enumerate(gray_code):
 	# quick test that does not require solving the linear system
 	status = (np.sum(xR*(sB^deltaB)) % 2)==0 and (np.sum(xR*(sG^deltaG)) % 2)==0
 	if status:

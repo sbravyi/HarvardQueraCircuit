@@ -2,6 +2,8 @@ use super::{
     iqp_circuit::build_iqp_circuit, simulation::Simulation, simulation_params::SimulationParams,
     statevector::generate_random_statevector,
 };
+#[cfg(debug_assertions)]
+use crate::debug::{debug_bitvec, debug_linear_system};
 use crate::{
     gray_code_flip_bit::GrayCodeFlipBit,
     iqp_simulations::{iqp_circuit::QubitColoringIndexes, linear_systems::LinearSystems},
@@ -10,8 +12,6 @@ use anyhow::{Context, Result};
 use bitvec::vec::BitVec;
 use itertools::Itertools;
 use std::time::Instant;
-#[cfg(debug_assertions)]
-use crate::debug::{debug_bitvec, debug_linear_system};
 
 pub struct CPUSmallIntSimulation {
     params: SimulationParams,
@@ -64,6 +64,7 @@ impl Simulation for CPUSmallIntSimulation {
             #[cfg(debug_assertions)]
             debug_linear_system(&ls);
         }
+        amplitude /= (1 << self.params.nodes) as f64;
         let end = Instant::now();
         log::debug!("Time to execute: {:#?}", end - start);
         println!(

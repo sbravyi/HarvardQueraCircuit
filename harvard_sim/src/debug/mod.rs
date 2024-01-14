@@ -1,9 +1,8 @@
 use crate::{
-    bit_matrix::{gauss_jordan::GaussJordan, matrix::BitMatrix},
+    bit_matrix::{augmented_gauss_jordan::AugmentedGaussJordan, matrix::BitMatrix},
     iqp_simulations::linear_systems::LinearSystems,
 };
 use bitvec::prelude::*;
-use itertools::Itertools;
 
 pub fn debug_bitvec(bv: &BitVec) {
     println!("{}", bv);
@@ -15,7 +14,7 @@ pub fn debug_bitmatrix(u: &BitMatrix) {
     }
 }
 
-pub fn debug_gj(u: &GaussJordan) {
+pub fn debug_gj(u: &AugmentedGaussJordan) {
     for bv in u.rows.iter() {
         println!("{}", bv);
     }
@@ -42,7 +41,7 @@ pub fn debug_linear_system(ls: &LinearSystems) {
     println!("x_r:");
     debug_bitvec(&ls.x_r);
     println!("gj:");
-    debug_gj(&ls.gj);
+    debug_gj(&ls.solver.gj);
     println!("solver:");
     debug_bitvec(&ls.solver.solution);
     println!("sb_delta_b:");
