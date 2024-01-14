@@ -13,6 +13,10 @@ impl BitMatrix {
         }
     }
 
+    pub fn get(&self, r: usize, c: usize) -> bool {
+        self.rows[r][c]
+    }
+
     pub fn set(&mut self, r: usize, c: usize, v: bool) {
         unsafe { self.rows[r].set_unchecked(c, v) }
     }
