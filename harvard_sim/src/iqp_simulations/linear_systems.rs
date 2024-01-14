@@ -5,7 +5,8 @@ use num_traits::Pow;
 
 use crate::{
     bit_matrix::{
-        backwards_substitution::BackwardsSubstitution, gauss_jordan::GaussJordan, matrix::BitMatrix,
+        backwards_substitution::BackwardsSubstitution, gauss_jordan::GaussJordan,
+        is_in_nullspace::is_in_nullspace, matrix::BitMatrix,
     },
     phase_polynomial::PolynomialGraph,
 };
@@ -98,12 +99,8 @@ impl LinearSystems {
             let rank = self.gj.rank();
             self.solver.solve(&self.gj, &self.sb_delta_b)?;
             let xg = &self.solver.solution;
-            let has_amplitude_contributions = if rank == self.gj.number_of_columns {
-                true
-            } else {
-                // TODO
-                false
-            };
+            let has_amplitude_contributions = (rank == self.gj.number_of_columns)
+                || (!is_in_nullspace(&self.gamma, &self.sg_delta_g));
             if !has_amplitude_contributions {
                 return None;
             }
