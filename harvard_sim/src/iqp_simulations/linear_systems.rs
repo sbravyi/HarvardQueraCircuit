@@ -5,7 +5,7 @@ use num_traits::Pow;
 
 use crate::{
     bit_matrix::{
-        backwards_substitution::BackwardsSubstitution, gauss_jordan::GaussJordan,
+        backwards_substitution::BackwardsSubstitution,
         is_in_nullspace::is_in_nullspace, matrix::BitMatrix,
     },
     phase_polynomial::PolynomialGraph,
@@ -14,17 +14,17 @@ use crate::{
 use super::simulation_params::SimulationParams;
 use bitvec::prelude::*;
 
+
 pub struct LinearSystems {
-    gamma: BitMatrix,
-    delta_b: BitVec,
-    delta_g: BitVec,
-    x_r: BitVec,
-    gj: GaussJordan,
-    solver: BackwardsSubstitution,
+    pub gamma: BitMatrix,
+    pub delta_b: BitVec,
+    pub delta_g: BitVec,
+    pub x_r: BitVec,
+    pub solver: BackwardsSubstitution,
     // caching allocations for
     // often used intermediary vectors
-    sb_delta_b: BitVec,
-    sg_delta_g: BitVec,
+    pub sb_delta_b: BitVec,
+    pub sg_delta_g: BitVec,
 }
 
 impl LinearSystems {
@@ -42,7 +42,6 @@ impl LinearSystems {
         let sb_delta_b = bitvec![usize, Lsb0; 0; nodes];
         let sg_delta_g = bitvec![usize, Lsb0; 0; nodes];
         let x_r = bitvec![usize, Lsb0; 0; nodes];
-        let gj = GaussJordan::zero(nodes, nodes);
         let solver = BackwardsSubstitution::zero(nodes);
         Self {
             gamma,
@@ -51,7 +50,6 @@ impl LinearSystems {
             sb_delta_b,
             sg_delta_g,
             x_r,
-            gj,
             solver,
         }
     }
@@ -96,7 +94,7 @@ impl LinearSystems {
             self.solver.solve(&self.gamma, &self.sb_delta_b)?;
             let rank = self.solver.gj.rank;
             let xg = &mut self.solver.solution;
-            let has_amplitude_contributions = (rank == self.gj.number_of_columns)
+            let has_amplitude_contributions = (rank == self.solver.gj.number_of_columns)
                 || (!is_in_nullspace(&self.gamma, &self.sg_delta_g));
             if !has_amplitude_contributions {
                 return None;
