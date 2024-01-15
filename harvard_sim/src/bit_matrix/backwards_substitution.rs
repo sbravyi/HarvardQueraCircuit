@@ -35,6 +35,7 @@ impl BackwardsSubstitution {
                 unsafe {
                     self.solution.set_unchecked(i, false);
                 }
+                continue;
             }
             let diag = row[i];
             if !diag {
@@ -43,6 +44,7 @@ impl BackwardsSubstitution {
                 unsafe {
                     self.solution.set_unchecked(i, false);
                 }
+                continue;
             }
             for j in i..n {
                 tmp ^= row[j] & self.solution[j]
