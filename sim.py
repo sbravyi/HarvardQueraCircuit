@@ -291,7 +291,7 @@ print('Done')
 
 
 # pick random output basis vector |s>
-s = np.array([0,1,1,1,0,0,1,1,1,1,0,0], dtype=int)
+s = np.array([0,0,1,1,1,1,0,0,1,0,0,0], dtype=int)
 sR = s[Red]
 sB = s[Blue]
 sG = s[Green]
