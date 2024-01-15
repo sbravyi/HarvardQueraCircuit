@@ -105,7 +105,6 @@ impl LinearSystems {
                 if sg_delta_g_i & bit {
                     sg_delta_g_xg_overlap += 1;
                 }
-                sg_delta_g_xg_overlap += 1;
             }
             let mut sr_xr_overlap = 0;
             for (idx, bit) in s_r.iter().by_vals().enumerate() {
