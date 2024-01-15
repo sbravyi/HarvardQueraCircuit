@@ -57,7 +57,13 @@ impl GaussJordan {
         }
         self.rows.sort_by_cached_key(|row| {
             if let Some(pivot) = row.first_one() {
-                self.rank += 1;
+                // kind of a hack to make rank equal
+                // to U in Ux = b, since we expect
+                // this gauss-jordan to only
+                // be used on augmented systems
+                if pivot != self.last_col_idx {
+                    self.rank += 1;
+                }
                 pivot
             } else {
                 usize::MAX
