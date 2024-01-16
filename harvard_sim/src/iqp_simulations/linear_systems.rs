@@ -4,23 +4,19 @@ use bitvec::vec::BitVec;
 use num_traits::Pow;
 
 use crate::{
-    bit_matrix::{
-        backwards_substitution::BackwardsSubstitution,
-        is_in_nullspace::is_in_nullspace, matrix::BitMatrix,
-    },
+    bit_matrix::{matrix::BitMatrix, sergey_solver::SergeySolver},
     phase_polynomial::PolynomialGraph,
 };
 
 use super::simulation_params::SimulationParams;
 use bitvec::prelude::*;
 
-
 pub struct LinearSystems {
     pub gamma: BitMatrix,
     pub delta_b: BitVec,
     pub delta_g: BitVec,
     pub x_r: BitVec,
-    pub solver: BackwardsSubstitution,
+    pub solver: SergeySolver,
     // caching allocations for
     // often used intermediary vectors
     pub sb_delta_b: BitVec,
@@ -42,7 +38,7 @@ impl LinearSystems {
         let sb_delta_b = bitvec![usize, Lsb0; 0; nodes];
         let sg_delta_g = bitvec![usize, Lsb0; 0; nodes];
         let x_r = bitvec![usize, Lsb0; 0; nodes];
-        let solver = BackwardsSubstitution::zero(nodes);
+        let solver = SergeySolver::zero(nodes);
         Self {
             gamma,
             delta_b,
@@ -91,15 +87,11 @@ impl LinearSystems {
         let s_g_xr_overlap_even_parity = s_g_xr_overlap_bits % 2 == 0;
         let not_in_nullspace = s_b_xr_overlap_even_parity && s_g_xr_overlap_even_parity;
         if not_in_nullspace {
-            self.solver.solve_non_unique(&self.gamma, &self.sb_delta_b)?;
-            let rank = self.solver.gj.rank;
-            let xg = &mut self.solver.solution;
-            let sg_in_nullspace = !is_in_nullspace(&self.gamma, &self.sg_delta_g);
-            let has_amplitude_contributions = (rank == self.solver.gj.number_of_columns)
-                || sg_in_nullspace;
-            if !has_amplitude_contributions {
+            self.solver.solve(&self.gamma, &self.sb_delta_b)?;
+            if !self.solver.is_full_rank() && !self.solver.is_nullspace_codeword(&self.sg_delta_g) {
                 return None;
             }
+            let xg = &mut self.solver.solution;
             let mut sg_delta_g_xg_overlap = 0;
             for (idx, bit) in xg.iter().by_vals().enumerate() {
                 let sg_delta_g_i = self.sg_delta_g[idx];
@@ -115,6 +107,7 @@ impl LinearSystems {
             }
             let phase_exponent = sg_delta_g_xg_overlap + sr_xr_overlap % 2;
             let phase: f64 = (-1.0).pow(phase_exponent);
+            let rank = self.solver.rank();
             let amplitude_increment: f64 = phase / ((1 << rank) as f64);
             return Some(amplitude_increment);
         }

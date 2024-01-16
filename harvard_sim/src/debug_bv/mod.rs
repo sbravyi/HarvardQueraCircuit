@@ -40,10 +40,8 @@ pub fn debug_linear_system(ls: &LinearSystems) {
     debug_bitvec(&ls.delta_g);
     println!("x_r:");
     debug_bitvec(&ls.x_r);
-    println!("gj:");
-    debug_gj(&ls.solver.gj);
     println!("solver:");
-    debug_bitvec(&ls.solver.solution);
+    ls.solver.debug();
     println!("sb_delta_b:");
     debug_bitvec(&ls.sb_delta_b);
     println!("sg_delta_g:");
