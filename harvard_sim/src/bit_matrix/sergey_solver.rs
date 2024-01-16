@@ -80,17 +80,17 @@ impl SergeySolver {
 
     fn reformulate_x_from_augmented_system(&mut self, current_equation: usize) -> Option<()> {
         let b_row = &self.augmented_system.rows[current_equation];
-        let n_variables = self.x.cols.len();
         for (col_idx, col) in self.x.cols.iter().enumerate() {
             let mut syndrome_val = false;
             // syndrome val is the inner product of each x column with the current b row
-            for b_one_idx in b_row.iter_ones() {
-                syndrome_val ^= col[b_one_idx];
+            for (b_one_idx, bit) in b_row.iter().enumerate() {
+                syndrome_val ^= *bit & col[b_one_idx];
             }
             unsafe {
                 self.syndrome.set_unchecked(col_idx, syndrome_val);
             }
         }
+        let n_variables = self.x.cols.len();
         let mut bad_cols = self
             .syndrome
             .iter_ones()
@@ -177,16 +177,14 @@ impl SergeySolver {
             }
         }
         self.take_arbitrary_solution_from_x()?;
-        // TODO: integrate with other solver and take more benchmarks
-        // TODO: test many statevectors
         Some(())
     }
 
     pub fn is_nullspace_codeword(&self, codeword: &BitVec) -> bool {
         for col in self.x.cols.iter() {
             let mut inner_product = false;
-            for bit_idx in codeword.iter_ones().filter(|bit_idx| *bit_idx < self.n) {
-                let col_val = col[bit_idx];
+            for (bit_idx, bit) in codeword.iter().enumerate().filter(|(bit_idx, _)| *bit_idx < self.n) {
+                let col_val = *bit & col[bit_idx];
                 inner_product ^= col_val
             }
             if inner_product {
