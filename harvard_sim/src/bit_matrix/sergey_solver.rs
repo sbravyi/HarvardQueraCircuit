@@ -98,12 +98,16 @@ impl SergeySolver {
         let n_variables = self.x.cols.len();
         let bad_cols = self
             .syndrome
-            .iter_ones()
-            .filter(|col_idx| *col_idx < n_variables).rev();
+            .iter()
+            .by_vals()
+            .enumerate()
+            .filter(|(col_idx, _)| *col_idx < n_variables).rev();
         let mut bad_col_n = 0;
-        for bad_col_idx in bad_cols {
-            self.x.remove_col(bad_col_idx);
-            bad_col_n += 1;
+        for (bad_col_idx, bit) in bad_cols {
+            if bit {
+                self.x.remove_col(bad_col_idx);
+                bad_col_n += 1;
+            }
         }
         if bad_col_n > 1 {
             let first_bad_col = self.x.pop_from_removed();
