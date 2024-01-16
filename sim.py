@@ -6,7 +6,7 @@ import numpy as np
 # for the k=4 example
 
 # Boolean cube dimension
-k = 2
+k = 4
 
 # number of cube nodes (denoted m in my notes)
 nodes = 1<<k
@@ -291,10 +291,11 @@ print('Done')
 
 
 # pick random output basis vector |s>
-s = np.random.randint(2,size=n)
+s = to_binary(n,1234)
 sR = s[Red]
 sB = s[Blue]
 sG = s[Green]
+
 
 print('Computing output amplitude <s|U|00...0>')
 print('Output bit string s=',s)
