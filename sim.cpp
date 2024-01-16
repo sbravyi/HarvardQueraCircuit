@@ -19,7 +19,7 @@ using std::vector;
 using std::pair;
 
 // dimension of the hypercube
-#define k 4
+#define k 5
 
 // number of nodes in the hypercube = 2^k
 #define num_nodes (1<<k)
@@ -436,7 +436,7 @@ for (long unsigned x = 1; x<N; x++)
     // quick test that can detect -H-CZ-Z-H- circuit with zero amplitude
     bool test1 = ((__builtin_popcountl(y & C.L) % 2)==0);
     bool test2 = ((__builtin_popcountl(y & (C.L>>num_nodes)) % 2)==0);
-    if (test2)
+    if (test1 && test2)
     {
     clifford_amplitude a = ExponentialSumReal(C);// this is likely to be the most expensive step
     int overlap = (__builtin_popcountl(sR & y) % 2);
