@@ -80,42 +80,46 @@ impl SergeySolver {
         }
     }
 
-    fn reformulate_x_from_augmented_system(&mut self, current_equation: usize) -> Option<()> {
+    fn find_syndrome(&mut self, current_equation: usize) {
         let b_row = &self.augmented_system.rows[current_equation];
         for (col_idx, col) in self.x.cols.iter().enumerate() {
             let mut syndrome_val = false;
             // syndrome val is the inner product of each x column with the current b row
-            for (b_one_idx, bit) in b_row.iter().enumerate() {
-                syndrome_val ^= *bit & col[b_one_idx];
+            for (b_one_idx, bit) in b_row.iter().by_vals().enumerate() {
+                syndrome_val ^= bit & col[b_one_idx];
             }
             unsafe {
                 self.syndrome.set_unchecked(col_idx, syndrome_val);
             }
         }
+    }
+
+    fn sort_bad_and_good_columns(&mut self) {
         let n_variables = self.x.cols.len();
-        let mut bad_cols = self
+        let bad_cols = self
             .syndrome
             .iter_ones()
-            .filter(|col_idx| *col_idx < n_variables);
-        let first_bad_col_idx = bad_cols.next();
-        // TODO: maybe try iterating in reverse, take em all out at once, and then
-        // add them while they're in removed
-        if let Some(first_bad_col_idx) = first_bad_col_idx {
-            self.x.remove_col(first_bad_col_idx);
+            .filter(|col_idx| *col_idx < n_variables).rev();
+        let mut bad_col_n = 0;
+        for bad_col_idx in bad_cols {
+            self.x.remove_col(bad_col_idx);
+            bad_col_n += 1;
+        }
+        if bad_col_n > 1 {
             let first_bad_col = self.x.pop_from_removed();
-            // add the first bad column to all other bad columns
-            // then take the remaining bad columns and project them
-            // onto x
-            let mut bad_cols_removed = 1;
-            for bad_col_idx in bad_cols {
-                self.x.remove_col(bad_col_idx - bad_cols_removed);
+            bad_col_n -= 1;
+            for _ in 0..bad_col_n {
                 let mut bad_col = self.x.pop_from_removed();
                 bad_col[..] ^= &first_bad_col;
                 self.x.push_back_into_usage(bad_col);
-                bad_cols_removed += 1;
             }
             self.x.put_back_in_removed(first_bad_col);
         }
+    }
+
+    fn reformulate_x_from_augmented_system(&mut self, current_equation: usize) -> Option<()> {
+        self.find_syndrome(current_equation);
+        self.sort_bad_and_good_columns();
         Some(())
     }
 

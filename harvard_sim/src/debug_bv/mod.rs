@@ -1,5 +1,5 @@
 use crate::{
-    bit_matrix::{gauss_jordan::GaussJordan, matrix::BitMatrix},
+    bit_matrix::matrix::BitMatrix,
     iqp_simulations::linear_systems::LinearSystems,
 };
 use bitvec::prelude::*;
@@ -9,12 +9,6 @@ pub fn debug_bitvec(bv: &BitVec) {
 }
 
 pub fn debug_bitmatrix(u: &BitMatrix) {
-    for bv in u.rows.iter() {
-        println!("{}", bv);
-    }
-}
-
-pub fn debug_gj(u: &GaussJordan) {
     for bv in u.rows.iter() {
         println!("{}", bv);
     }
