@@ -6,3 +6,6 @@ pub mod iqp_simulations;
 pub mod phase_polynomial;
 pub mod qubit;
 pub mod bit_matrix;
+
+#[cfg(debug_assertions)]
+pub mod debug_bv;

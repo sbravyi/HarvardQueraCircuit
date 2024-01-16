@@ -91,11 +91,12 @@ impl LinearSystems {
         let s_g_xr_overlap_even_parity = s_g_xr_overlap_bits % 2 == 0;
         let not_in_nullspace = s_b_xr_overlap_even_parity && s_g_xr_overlap_even_parity;
         if not_in_nullspace {
-            self.solver.solve(&self.gamma, &self.sb_delta_b)?;
+            self.solver.solve_non_unique(&self.gamma, &self.sb_delta_b)?;
             let rank = self.solver.gj.rank;
             let xg = &mut self.solver.solution;
+            let sg_in_nullspace = !is_in_nullspace(&self.gamma, &self.sg_delta_g);
             let has_amplitude_contributions = (rank == self.solver.gj.number_of_columns)
-                || (!is_in_nullspace(&self.gamma, &self.sg_delta_g));
+                || sg_in_nullspace;
             if !has_amplitude_contributions {
                 return None;
             }

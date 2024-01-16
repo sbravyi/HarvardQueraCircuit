@@ -291,7 +291,9 @@ print('Done')
 
 
 # pick random output basis vector |s>
-s = np.array([0,0,1,1,1,1,0,0,1,0,0,0], dtype=int)
+# s = np.random.randint(2,size=n)
+s = np.array([0,1,0,0,1,1,1,1,1,0,1,0], dtype=int)
+
 sR = s[Red]
 sB = s[Blue]
 sG = s[Green]
@@ -318,6 +320,8 @@ xR = np.zeros(nodes,dtype=int)
 for idx, flip_bit in enumerate(gray_code):
 	# quick test that does not require solving the linear system
 	status = (np.sum(xR*(sB^deltaB)) % 2)==0 and (np.sum(xR*(sG^deltaG)) % 2)==0
+	print((idx, flip_bit, status))
+	# print((Gamma,xR, sB^deltaB, sG^deltaG))
 	if status:
 		# I suspect that 99% of the time is spent in this line:
 		status,xG,Gperp = solve(Gamma,sB^deltaB)
@@ -329,7 +333,7 @@ for idx, flip_bit in enumerate(gray_code):
 		# check if the vector sG belongs to the nullspace of Gamma
 		if Gperp.shape[1]>0:
 			syndrome = ((sG^deltaG) @ Gperp) % 2
-			# rank of Gamma
+			check_syndome = np.count_nonzero(syndrome) == 0
 			rk = nodes - Gperp.shape[1]
 		else:
 			# Gamma is a full rank matrix

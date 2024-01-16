@@ -12,7 +12,7 @@ pub fn is_in_nullspace(u: &BitMatrix, b: &BitVec) -> bool {
                 bit_overlap += 1;
             }
         }
-        if bit_overlap % 2 == 0 {
+        if bit_overlap % 2 != 0 {
             return false;
         }
     }

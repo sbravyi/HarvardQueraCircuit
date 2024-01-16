@@ -4,12 +4,15 @@ use super::{
 };
 use crate::{
     gray_code_flip_bit::GrayCodeFlipBit,
-    iqp_simulations::{iqp_circuit::QubitColoringIndexes, linear_systems::LinearSystems},
+    iqp_simulations::{iqp_circuit::QubitColoringIndexes, linear_systems::LinearSystems}
 };
 use anyhow::{Context, Result};
 use bitvec::vec::BitVec;
 use itertools::Itertools;
 use std::time::Instant;
+
+#[cfg(debug_assertions)]
+use crate::debug_bv::debug_linear_system;
 
 pub struct CPUSmallIntSimulation {
     params: SimulationParams,
@@ -40,11 +43,24 @@ impl Simulation for CPUSmallIntSimulation {
         let mut amplitude: f64 = 0.0;
         let mut ls = LinearSystems::new(&self.params, &phase_graph);
         for flip_bit in gc_flip_bit {
+            #[cfg(debug_assertions)]
+            println!("BEFORE SOLVING");
+            #[cfg(debug_assertions)]
+            println!("flip bit: {flip_bit}");
+            #[cfg(debug_assertions)]
+            debug_linear_system(&ls);
             if let Some(amplitude_increment) =
                 ls.solve_if_gamma_null_space_quick_check(&s_b, &s_g, &s_r)
             {
-                amplitude += amplitude_increment;
+            amplitude += amplitude_increment;
+            #[cfg(debug_assertions)]
+            println!("AMPLITUDE UPDATE: {:?}", (flip_bit, amplitude, amplitude_increment));
+            amplitude += 0.0;
             }
+            #[cfg(debug_assertions)]
+            println!("AFTER SOLVING");
+            #[cfg(debug_assertions)]
+            debug_linear_system(&ls);
             ls.update_with_flip_bit(flip_bit, &phase_graph);
         }
         amplitude /= (1 << self.params.nodes) as f64;
