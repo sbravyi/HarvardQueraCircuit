@@ -51,6 +51,8 @@ impl SergeySolver {
         debug_col_matrix(&self.x);
         println!("sol");
         debug_bitvec(&self.solution);
+        println!("syndrome");
+        debug_bitvec(&self.syndrome);
     }
 
     pub fn copy_from_augmented_system(&mut self, m: &BitMatrix, b: &BitVec) {
@@ -67,11 +69,11 @@ impl SergeySolver {
                 self.augmented_system.rows[idx].set_unchecked(self.n, *b);
             }
         }
+        self.syndrome.store(0x0);
         self.x.reset();
         if self.zero_b {
             self.x.remove_col(self.n);
         }
-        self.syndrome.store(0x0);
         // quick identity matrix creation
         for idx in 0..x_rank {
             self.x.cols[idx].store(1 << idx);
@@ -118,16 +120,18 @@ impl SergeySolver {
     }
 
     fn take_arbitrary_solution_from_x(&mut self) -> Option<()> {
-        let mut last_row = self.x.number_of_rows - 1;
+        let last_row = self.x.number_of_rows - 1;
         if self.zero_b {
-            last_row -= 1;
+            return self.x.cols.first().map(|first_solution| {
+                self.solution[..self.n].copy_from_bitslice(&first_solution[..self.n]);
+            });
         }
         let sol_col_idx = if let Some((col_idx, solution)) = self
             .x
             .cols
             .iter()
             .enumerate()
-            .find_or_first(|(_, col)| col[last_row])
+            .find(|(_, col)| col[last_row])
         {
             self.solution[..self.n].copy_from_bitslice(&solution[..self.n]);
             Some(col_idx)
@@ -183,7 +187,11 @@ impl SergeySolver {
     pub fn is_nullspace_codeword(&self, codeword: &BitVec) -> bool {
         for col in self.x.cols.iter() {
             let mut inner_product = false;
-            for (bit_idx, bit) in codeword.iter().enumerate().filter(|(bit_idx, _)| *bit_idx < self.n) {
+            for (bit_idx, bit) in codeword
+                .iter()
+                .enumerate()
+                .filter(|(bit_idx, _)| *bit_idx < self.n)
+            {
                 let col_val = *bit & col[bit_idx];
                 inner_product ^= col_val
             }
@@ -210,6 +218,17 @@ mod test {
         let mut solver = SergeySolver::zero(4);
         solver.solve(&matrix, &b).unwrap();
         assert_eq!(solver.solution.to_string(), x.to_string());
+    }
+
+    fn four_by_four_system_failure(mat_rows: Vec<Vec<usize>>, b: BitVec) {
+        let mut matrix = BitMatrix::zeroes(4, 4);
+        for (ridx, r) in mat_rows.iter().enumerate() {
+            for cidx in r {
+                matrix.set(ridx, *cidx, true)
+            }
+        }
+        let mut solver = SergeySolver::zero(4);
+        assert!(solver.solve(&matrix, &b).is_none());
     }
 
     fn nullspace_check(
@@ -325,6 +344,14 @@ mod test {
             bitvec![0, 1, 0, 0].to_bitvec(),
             bitvec![0, 1, 1, 0].to_bitvec(),
             true,
+        )
+    }
+
+    #[test]
+    fn test_negative_case() {
+        four_by_four_system_failure(
+            vec![vec![0], vec![], vec![], vec![3]],
+            bitvec![1, 1, 1, 0].to_bitvec(),
         )
     }
 }

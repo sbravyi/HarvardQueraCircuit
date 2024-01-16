@@ -22,7 +22,8 @@ impl IQPSimulationBuilder {
             );
         } else {
             let mut simulation = CPUSmallIntSimulation::new(self.boolean_cube_dimension);
-            simulation.run().context("running small int simulation")
+            simulation.run().context("running small int simulation")?;
+            Ok(())
         }
     }
 }

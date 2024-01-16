@@ -292,7 +292,7 @@ print('Done')
 
 # pick random output basis vector |s>
 # s = np.random.randint(2,size=n)
-s = np.array([1,1,1,0,0,0,1,0,0,0,1,1], dtype=int)
+s = np.array([0,1,1,0,0,1,0,0,1,0,0,1], dtype=int)
 
 sR = s[Red]
 sB = s[Blue]
@@ -343,6 +343,7 @@ for idx, flip_bit in enumerate(gray_code):
 		if np.count_nonzero(syndrome)==0:
 			# we got a nonzero contribution to the amplitude from this boolean pattern xR
 			phase = (-1)**(np.sum((sG^deltaG)*xG) + np.sum(sR*xR) % 2)
+			print("a {} + {} = {}".format(amplitude, phase/(1<<rk), amplitude + phase/(1<<rk)))
 			amplitude+= phase/(1<<rk)
 	# update xR and G
 	xR[flip_bit]^=1
