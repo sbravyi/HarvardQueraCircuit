@@ -1,13 +1,10 @@
 all : ex
 
-CC = g++ 
-#CC = g++ -std=c++11
+CC = g++ -std=c++11
 CFLAGS = -O3
 
-
-
-ex : ExponentialSumReal.cpp $(DEPS)
-	${CC} ${CFLAGS} ExponentialSumReal.cpp -o $@
+ex : sim.cpp $(DEPS)
+	${CC} ${CFLAGS} sim.cpp -o $@
 
 
 clean :
