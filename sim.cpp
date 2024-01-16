@@ -19,7 +19,7 @@ using std::vector;
 using std::pair;
 
 // dimension of the hypercube
-#define k 5
+#define k 4
 
 // number of nodes in the hypercube = 2^k
 #define num_nodes (1<<k)
@@ -355,7 +355,7 @@ for (unsigned direction=0; direction<k; direction++)
 
 
 // define output basis vector |s> of the QuEra circuit
-long unsigned s = 1234;
+long unsigned s = 123;
 cout<<"Qubits="<<num_qubits<<endl;
 cout<<"output string s="<<s<<endl;
 
