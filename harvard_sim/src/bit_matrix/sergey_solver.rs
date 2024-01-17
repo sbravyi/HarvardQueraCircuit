@@ -69,14 +69,15 @@ impl SergeySolver {
                 self.augmented_system.rows[idx].set_unchecked(self.n, *b);
             }
         }
-        self.syndrome.store(0x0);
+        self.syndrome.fill(false);
         self.x.reset();
         if self.zero_b {
             self.x.remove_col(self.n);
         }
         // quick identity matrix creation
         for idx in 0..x_rank {
-            self.x.cols[idx].store(1 << idx);
+            self.x.cols[idx].set_elements(0x1);
+            self.x.cols[idx].shift_right(idx);
         }
     }
 

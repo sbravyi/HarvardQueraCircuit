@@ -14,6 +14,8 @@ impl GrayCodeFlipBit {
     }
 }
 
+const LOG_POINT: u128 = 2_u128.pow(22);
+
 // Loosely inspired by:
 // https://www.sciencedirect.com/science/article/pii/S0195669812001321#br000040
 //
@@ -25,6 +27,9 @@ impl Iterator for GrayCodeFlipBit {
     fn next(&mut self) -> Option<u32> {
         if self.finished {
             return None;
+        }
+        if self.index % (LOG_POINT) == 0 {
+            println!("PROGRESS: {}/1", (self.index as f64) / (2.0_f64.powf(self.number_of_bits as f64)))
         }
         if self.index.ilog2() >= self.number_of_bits {
             // always flip the last bit before you leave
