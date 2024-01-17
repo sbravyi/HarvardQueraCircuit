@@ -5,3 +5,4 @@ pub mod iqp_circuit;
 pub mod simulation_params;
 pub mod statevector;
 pub mod linear_systems;
+pub mod swap_check;

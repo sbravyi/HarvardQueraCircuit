@@ -8,7 +8,7 @@ use crate::{
     phase_polynomial::PolynomialGraph,
 };
 
-use super::simulation_params::SimulationParams;
+use super::{simulation_params::SimulationParams, swap_check::SwapSymmetries};
 use bitvec::prelude::*;
 
 pub struct LinearSystems {
@@ -21,6 +21,7 @@ pub struct LinearSystems {
     // often used intermediary vectors
     pub sb_delta_b: BitVec,
     pub sg_delta_g: BitVec,
+    pub symmetry_checker: Option<SwapSymmetries>
 }
 
 impl LinearSystems {
@@ -39,6 +40,11 @@ impl LinearSystems {
         let sg_delta_g = bitvec![usize, Lsb0; 0; nodes];
         let x_r = bitvec![usize, Lsb0; 0; nodes];
         let solver = SergeySolver::zero(nodes);
+        let symmetry_checker = if nodes == 16 {
+            Some(SwapSymmetries::new())
+        } else {
+            None
+        };
         Self {
             gamma,
             delta_b,
@@ -47,6 +53,7 @@ impl LinearSystems {
             sg_delta_g,
             x_r,
             solver,
+            symmetry_checker
         }
     }
 
@@ -86,7 +93,18 @@ impl LinearSystems {
         }
         let s_g_xr_overlap_even_parity = s_g_xr_overlap_bits % 2 == 0;
         let not_in_nullspace = s_b_xr_overlap_even_parity && s_g_xr_overlap_even_parity;
-        if not_in_nullspace {
+        let mut should_solve = not_in_nullspace;
+        let mut amplitude_multiplier: f64 = 1.0;
+        if should_solve {
+            if let Some(checker) = &mut self.symmetry_checker {
+                if let Some(symmetries) = checker.check_for_symmetries() {
+                    amplitude_multiplier = symmetries.len() as f64;
+                } else {
+                    should_solve = false;
+                }
+            }
+        }
+        if should_solve {
             self.solver.solve(&self.gamma, &self.sb_delta_b)?;
             if !self.solver.is_full_rank() && !self.solver.is_nullspace_codeword(&self.sg_delta_g) {
                 return None;
@@ -109,7 +127,7 @@ impl LinearSystems {
             let phase: f64 = (-1.0).pow(phase_exponent);
             let rank = self.solver.rank();
             let amplitude_increment: f64 = phase / ((1 << rank) as f64);
-            return Some(amplitude_increment);
+            return Some(amplitude_increment * amplitude_multiplier);
         }
         None
     }
@@ -117,6 +135,9 @@ impl LinearSystems {
     // extremely performance sensitive function - this is called an exponential amount of times
     pub fn update_with_flip_bit(&mut self, flip_bit: u32, phase_graph: &PolynomialGraph) {
         let flip_index = flip_bit as usize;
+        if let Some(ss) = &mut self.symmetry_checker {
+            ss.flip_bit_at(flip_bit);
+        }
         let to_flip = !self.x_r[flip_index];
         unsafe {
             self.x_r.set_unchecked(flip_index, to_flip);

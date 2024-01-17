@@ -1,7 +1,7 @@
 pub struct GrayCodeFlipBit {
-    index: u128,
+    index: u64,
     number_of_bits: u32,
-    finished: bool,
+    finished: bool
 }
 
 impl GrayCodeFlipBit {
@@ -9,7 +9,7 @@ impl GrayCodeFlipBit {
         Self {
             index: 1,
             number_of_bits,
-            finished: false,
+            finished: false
         }
     }
 }
