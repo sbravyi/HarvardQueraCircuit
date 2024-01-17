@@ -6,7 +6,6 @@ use super::column_matrix::ColumnMatrix;
 use super::matrix::BitMatrix;
 
 pub struct SergeySolver {
-    augmented_system: BitMatrix,
     n: usize,
     x: ColumnMatrix,
     pub solution: BitVec,
@@ -35,7 +34,6 @@ fn debug_bitvec(b: &BitVec) {
 impl SergeySolver {
     pub fn zero(n: usize) -> Self {
         Self {
-            augmented_system: BitMatrix::zeroes(n, n + 1),
             n,
             x: ColumnMatrix::zeroes(n + 1, n + 1),
             solution: bitvec![usize, Lsb0; 0; n],
@@ -45,8 +43,6 @@ impl SergeySolver {
     }
 
     pub fn debug(&self) {
-        println!("a");
-        debug_bitmatrix(&self.augmented_system);
         println!("x");
         debug_col_matrix(&self.x);
         println!("sol");
@@ -55,20 +51,9 @@ impl SergeySolver {
         debug_bitvec(&self.syndrome);
     }
 
-    pub fn copy_from_augmented_system(&mut self, m: &BitMatrix, b: &BitVec) {
-        debug_assert_eq!(m.number_of_columns, self.n);
-        debug_assert_eq!(b.len(), self.n);
-        debug_assert_eq!(m.rows.len(), self.augmented_system.rows.len());
+    pub fn reset(&mut self, b: &BitVec) {
         self.zero_b = b.first_one().is_none();
         let x_rank = if self.zero_b { self.n } else { self.n + 1 };
-        for (idx, row) in m.rows.iter().enumerate() {
-            self.augmented_system.rows[idx][..self.n].copy_from_bitslice(&row[..]);
-        }
-        for (idx, b) in b.iter().enumerate() {
-            unsafe {
-                self.augmented_system.rows[idx].set_unchecked(self.n, *b);
-            }
-        }
         self.syndrome.fill(false);
         self.x.reset();
         if self.zero_b {
@@ -76,19 +61,22 @@ impl SergeySolver {
         }
         // quick identity matrix creation
         for idx in 0..x_rank {
-            self.x.cols[idx].set_elements(0x1);
-            self.x.cols[idx].shift_right(idx);
+            self.x.cols[idx].fill(false);
+            unsafe {
+                self.x.cols[idx].set_unchecked(idx, true);
+            }
         }
     }
 
-    fn find_syndrome(&mut self, current_equation: usize) {
-        let b_row = &self.augmented_system.rows[current_equation];
+    fn find_syndrome(&mut self, current_equation: usize, u: &BitMatrix, b: &BitVec) {
+        let b_row = &u.rows[current_equation];
         for (col_idx, col) in self.x.cols.iter().enumerate() {
             let mut syndrome_val = false;
             // syndrome val is the inner product of each x column with the current b row
             for (b_one_idx, bit) in b_row.iter().by_vals().enumerate() {
                 syndrome_val ^= bit & col[b_one_idx];
             }
+            syndrome_val ^= b[current_equation] & col[self.n];
             unsafe {
                 self.syndrome.set_unchecked(col_idx, syndrome_val);
             }
@@ -122,8 +110,8 @@ impl SergeySolver {
         }
     }
 
-    fn reformulate_x_from_augmented_system(&mut self, current_equation: usize) -> Option<()> {
-        self.find_syndrome(current_equation);
+    fn reformulate_x_from_augmented_system(&mut self, current_equation: usize, u: &BitMatrix, b: &BitVec) -> Option<()> {
+        self.find_syndrome(current_equation, u, b);
         self.sort_bad_and_good_columns();
         Some(())
     }
@@ -182,9 +170,9 @@ impl SergeySolver {
     }
 
     pub fn solve(&mut self, u: &BitMatrix, b: &BitVec) -> Option<()> {
-        self.copy_from_augmented_system(u, b);
+        self.reset(b);
         for i in 0..self.n {
-            self.reformulate_x_from_augmented_system(i)?;
+            self.reformulate_x_from_augmented_system(i, u, b)?;
             if self.is_full_rank() {
                 return self.full_rank_result();
             }
