@@ -22,7 +22,7 @@ using std::vector;
 using std::pair;
 
 // dimension of the hypercube
-#define k 4
+#define k 5
 
 const long unsigned one = 1ul;
 
@@ -170,7 +170,7 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
         if (i2 == n - 1) {
             break;
         }
-        i1 += 1;
+        i2 += 1;
     }
       
       bool L1 = ((C.L>>i1) & one) ^ ((C.M[i1]>>i1) & one);
@@ -290,7 +290,7 @@ double exponential_task(std::tuple<unsigned long, unsigned long> boundaries, cli
     unsigned long start = std::get<0>(boundaries);
     unsigned long end = std::get<1>(boundaries);
     double amplitude = 0.0;
-    for (long unsigned x = start; x<=end; x++) {
+    for (long unsigned x = start; x<end; x++) {
         // y = gray code encoding of x
         long unsigned y = x ^ (x>>1);
         long unsigned xprev = x - one;
