@@ -163,16 +163,15 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
 
       
       // find i2 such that M(i1,i2)!=M(i2,i1)
-      size_t i2;
-      if (i1 == n) {
-        i1 = 0;
-      }
-      bool isFound=false;
-      for (i2=0; i2<n; i2++)
-      {
-          isFound = ( ((C.M[i1]>>i2) & one) != ((C.M[i2]>>i1) & one) );
-          if (isFound) break;
-      }
+    size_t i2 = 0;
+    bool isFound=false;
+    while(!isFound) {
+        isFound = ( ((C.M[i1]>>i2) & one) != ((C.M[i2]>>i1) & one) );
+        if (i2 == n - 1) {
+            break;
+        }
+        i1 += 1;
+    }
       
       bool L1 = ((C.L>>i1) & one) ^ ((C.M[i1]>>i1) & one);
       
