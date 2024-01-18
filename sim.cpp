@@ -4,6 +4,7 @@
 // define k at line 22; define s at line 358
 
 
+#include <array>
 #include <cstdlib>
 #include <iostream>
 #include <cmath>

@@ -7,7 +7,7 @@ ex : sim.cpp $(DEPS)
 	${CC} ${CFLAGS} sim.cpp -o $@
 
 ex_parallel : sim.cpp $(DEPS)
-	${CC} ${CFLAGS} sim_parallel.cpp -o $@
+	${CC} ${CFLAGS} sim_parallel.cpp -o $@ -lpthread
 
 clean :
 	rm ex ex_parallel
