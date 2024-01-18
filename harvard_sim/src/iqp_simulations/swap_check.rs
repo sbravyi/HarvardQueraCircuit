@@ -3,7 +3,7 @@ use std::collections::{HashSet, BTreeSet};
 
 #[derive(Default)]
 pub struct SwapSymmetries {
-    current_bit_pattern: u16,
+    pub current_bit_pattern: u16,
     pub symmetries: HashSet<u16>,
 }
 
@@ -14,9 +14,9 @@ impl SwapSymmetries {
 
     fn inverted_nybbles(bitstring: u16) -> u16 {
         let mut inverted = 0;
-        let to_invert = BitSlice::<_, Lsb0>::from_element(&bitstring);
+        let to_invert = &BitSlice::<_, Lsb0>::from_element(&bitstring);
         for (bit_idx, bit) in to_invert.iter().by_vals().enumerate() {
-            let idx = bit_idx as u32;
+            let idx = bit_idx as u16;
             let target_index = (3 - ((idx) % 4)) + (idx / 4) * 4;
             if bit {
                 inverted |= 1 << target_index;
@@ -27,13 +27,13 @@ impl SwapSymmetries {
 
     fn bisection_swap(bitstring: u16) -> u16 {
         let mut swapped = 0;
-        let to_swap = BitSlice::<_, Lsb0>::from_element(&bitstring);
+        let to_swap = &BitSlice::<_, Lsb0>::from_element(&bitstring);
         for (byte_index, byte_chunk) in to_swap.chunks_exact(8).enumerate() {
-            let byte_offset = (byte_index as u32) * 8;
+            let byte_offset = (byte_index as u16) * 8;
             for (nybble_index, nybble_chunk) in byte_chunk.chunks_exact(4).enumerate() {
-                let nybble_offset = byte_offset + (1 - nybble_index as u32) * 4;
+                let nybble_offset = byte_offset + (1 - nybble_index as u16) * 4;
                 for (bit_pair_index, bit_pair) in nybble_chunk.chunks_exact(2).enumerate() {
-                    let bit_pair_offset = nybble_offset + (bit_pair_index as u32) * 2;
+                    let bit_pair_offset = nybble_offset + (bit_pair_index as u16) * 2;
                     let b0 = bit_pair[0];
                     let b1 = bit_pair[1];
                     let b0_idx = bit_pair_offset + 1;
@@ -63,10 +63,22 @@ impl SwapSymmetries {
         ]
     }
 
-    pub fn flip_bit_at(&mut self, flip_bit: u32) {
-        self.current_bit_pattern ^= 1 << flip_bit;
+    pub fn increment_bit(&mut self, flip_bit: Option<u32>) {
+        if let Some(flip_bit) = flip_bit {
+            self.current_bit_pattern ^= 1 << flip_bit;
+            return;
+        };
+        #[cfg(debug_assertions)]
+        {
+            self.current_bit_pattern = self.current_bit_pattern.saturating_add(1);
+        }
+        #[cfg(not(debug_assertions))]
+        {
+            self.current_bit_pattern += 1;
+        }
     }
 
+    #[inline(never)]
     pub fn check_for_symmetries(&mut self) -> Option<BTreeSet<u16>> {
         // generates the simulated bitstring by flipping the bit at the given bit index.
         // if the current bitstring is not a symmetry, swap symmetries generates all symmetries
@@ -77,16 +89,13 @@ impl SwapSymmetries {
         // tracking them in a hashset, and understanding if a symmetry has already been encountered based
         // on the smallest bit.
         if self.symmetries.contains(&self.current_bit_pattern) {
-            println!("symmetry collision for bit {:?}", self.current_bit_pattern);
             return None;
         }
         let symmetries = self.generate_symmetries_for_current_bit_pattern();
         let deduplicate = BTreeSet::from_iter(symmetries);
-        println!("n-unique symmetries for bit {:?}: {:?}", self.current_bit_pattern, deduplicate);
         for symmetry in deduplicate.iter() {
             self.symmetries.insert(*symmetry);
         }
-        println!("All Symmetries!: {:?}", self.symmetries);
         Some(deduplicate)
     }
 }
@@ -97,19 +106,26 @@ mod tests {
 
     use super::*;
 
-    fn test_symmetries(bit_string: u16, expected_symmetries: Vec<u16>) {
-        let mut ss = SwapSymmetries::new();
-        let bits = BitSlice::<_, Lsb0>::from_element(&bit_string);
-        for one_idx in bits.iter_ones() {
-            ss.flip_bit_at(one_idx as u32);
-        }
-        let symmetries = ss.check_for_symmetries().expect("to have symmetries");
-        for symmetry in expected_symmetries {
-            assert!(
-                symmetries.contains(&symmetry),
-                "did not contain symmetry 0b{symmetry:b} | {:?}",
-                symmetries.iter().map(|s| format!("0b{s:b}")).collect_vec()
-            );
+    fn test_symmetries(symmetry_group: Vec<u16>) {
+        let all_symmetries = BTreeSet::from_iter(symmetry_group.iter());
+        for symmetry in symmetry_group.iter() {
+            let mut ss = SwapSymmetries::new();
+            let mut other_symmetries = all_symmetries.clone();
+            other_symmetries.remove(&symmetry);
+            for _ in 0..*symmetry {
+                ss.increment_bit(None);
+            }
+            ss.check_for_symmetries().expect("to have symmetries");
+            let mut ss_symmetries_without_self = ss.symmetries.clone();
+            ss_symmetries_without_self.remove(symmetry);
+            assert_eq!(ss_symmetries_without_self.len(), other_symmetries.len(), "no extra symmetries - {:?} = {:?}", ss.symmetries, other_symmetries);
+            for symmetry in other_symmetries {
+                assert!(
+                    ss.symmetries.contains(symmetry),
+                    "did not contain symmetry 0b{symmetry:b} | {:?}",
+                    ss.symmetries.iter().map(|s| format!("0b{s:b}")).collect_vec()
+                );
+            }
         }
     }
 
@@ -125,8 +141,9 @@ mod tests {
 
     #[test]
     fn test_one() {
-        test_symmetries(0b1, vec![0b1000, 0b100000, 0b1000000]);
-        test_symmetries(0b1000, vec![0b1, 0b100000, 0b1000000]);
-        test_symmetries(0b0111, vec![0b1110, 0b10110000, 0b11010000]);
+        test_symmetries(vec![0b1, 0b1000, 0b100000, 0b1000000]);
+        test_symmetries( vec![0b1000, 0b1, 0b100000, 0b1000000]);
+        test_symmetries( vec![0b0111, 0b1110, 0b10110000, 0b11010000]);
+        test_symmetries( vec![0b10010110]);
     }
 }

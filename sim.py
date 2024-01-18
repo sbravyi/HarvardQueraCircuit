@@ -6,7 +6,7 @@ import numpy as np
 # for the k=4 example
 
 # Boolean cube dimension
-k = 4
+k = 3
 
 # number of cube nodes (denoted m in my notes)
 nodes = 1<<k
@@ -292,7 +292,8 @@ print('Done')
 
 # pick random output basis vector |s>
 # s = np.random.randint(2,size=n)
-s = np.array([1,0,0,1,0,0,1,1,1,0,1,0,0,1,0,0,0,1,1,0,0,1,1,1,0,0,0,1,1,1,1,0,0,0,1,1,0,0,1,1,1,0,1,0,0,1,1,1], dtype=int)
+s = np.array([1,1,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,1,0,0,0,0,1,1],dtype=int)
+# s = np.array([1,0,1,1,0,0,0,1,1,0,1,0,1,0,0,1,1,0,0,0,0,1,1,0,1,0,1,1,1,0,0,0,0,0,0,0,0,1,1,1,0,1,0,0,0,1,1,0], dtype=int)
 # s = np.array([0,1,1,0,0,1,0,0,1,0,0,1], dtype=int)
 
 sR = s[Red]
@@ -316,14 +317,10 @@ deltaG = np.zeros(nodes,dtype=int)
 xR = np.zeros(nodes,dtype=int)
 
 
-hits = 0
-total = 0
 # WARNING: exponentially big loop ! 
 # We iterate over (n/3)-bit strings xR 
 # This is where most of the time is spent
-boolean_pattern = 0
 for idx, flip_bit in enumerate(gray_code):
-	total += 1
 	# quick test that does not require solving the linear system
 	status = (np.sum(xR*(sB^deltaB)) % 2)==0 and (np.sum(xR*(sG^deltaG)) % 2)==0
 	# print((Gamma,xR, sB^deltaB, sG^deltaG))
@@ -335,7 +332,6 @@ for idx, flip_bit in enumerate(gray_code):
 	# xG is a solution of the linear system Gamma @ xG = sB (mod 2)
 	# and columns of Gperp span the nullspace of Gamma
 	if status=='OK':
-		hits += 1
 		# check if the vector sG belongs to the nullspace of Gamma
 		if Gperp.shape[1]>0:
 			syndrome = ((sG^deltaG) @ Gperp) % 2
@@ -350,10 +346,9 @@ for idx, flip_bit in enumerate(gray_code):
 			# we got a nonzero contribution to the amplitude from this boolean pattern xR
 			phase = (-1)**(np.sum((sG^deltaG)*xG) + np.sum(sR*xR) % 2)
 			phase;
-			# print("a {} + {} = {}".format(amplitude, phase/(1<<rk), amplitude + phase/(1<<rk)))
+			print("idx({}): a {} + {} = {}".format(idx, amplitude, phase/(1<<rk), amplitude + phase/(1<<rk)))
 			amplitude+= phase/(1<<rk)
 	# update xR and G
-	boolean_pattern ^= (1 << flip_bit)
 	xR[flip_bit]^=1
 	for h in M_RBG[flip_bit]:
 		Gamma[h[0],h[1]]^=1
@@ -371,7 +366,6 @@ assert(np.count_nonzero(xR)==0)
 amplitude/=(1<<nodes)
 
 print('Amplitude <s|U|00...0>=',amplitude)
-print('non-null bitstring frequency', hits/total)
 
 
 # test: compute the same amplitude by the brute force algorithm

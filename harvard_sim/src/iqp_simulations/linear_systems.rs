@@ -1,5 +1,7 @@
 // Sergey's matrices Gamma, delta^B, and delta^G
 
+use std::collections::{BTreeSet, HashMap};
+
 use bitvec::vec::BitVec;
 use num_traits::Pow;
 
@@ -21,7 +23,10 @@ pub struct LinearSystems {
     // often used intermediary vectors
     pub sb_delta_b: BitVec,
     pub sg_delta_g: BitVec,
-    pub symmetry_checker: Option<SwapSymmetries>
+    pub symmetry_checker: Option<SwapSymmetries>,
+    pub symmetry_groups: HashMap<u16, BTreeSet<u16>>,
+    pub dmitri_skips: BTreeSet<u16>,
+    pub increments: HashMap<u16, f64>
 }
 
 impl LinearSystems {
@@ -40,7 +45,7 @@ impl LinearSystems {
         let sg_delta_g = bitvec![usize, Lsb0; 0; nodes];
         let x_r = bitvec![usize, Lsb0; 0; nodes];
         let solver = SergeySolver::zero(nodes);
-        let symmetry_checker = if nodes == 16 {
+        let symmetry_checker = if params.nodes <= 16 {
             Some(SwapSymmetries::new())
         } else {
             None
@@ -53,17 +58,15 @@ impl LinearSystems {
             sg_delta_g,
             x_r,
             solver,
-            symmetry_checker
+            symmetry_checker,
+            symmetry_groups: HashMap::new(),
+            dmitri_skips: BTreeSet::new(),
+            increments: HashMap::new()
         }
     }
 
-    // extremely performance sensitive function - this is called an exponential amount of times
-    pub fn solve_if_gamma_null_space_quick_check(
-        &mut self,
-        s_b: &BitVec,
-        s_g: &BitVec,
-        s_r: &BitVec,
-    ) -> Option<f64> {
+    #[inline(never)]
+    fn sergey_check(&mut self, s_b: &BitVec, s_g: &BitVec) -> Option<()> {
         let mut s_b_xr_overlap_bits = 0;
         for (idx, bit) in s_b.iter().by_vals().enumerate() {
             let delta = self.delta_b[idx];
@@ -92,51 +95,80 @@ impl LinearSystems {
             }
         }
         let s_g_xr_overlap_even_parity = s_g_xr_overlap_bits % 2 == 0;
-        let not_in_nullspace = s_b_xr_overlap_even_parity && s_g_xr_overlap_even_parity;
-        let mut should_solve = not_in_nullspace;
-        let mut amplitude_multiplier: f64 = 1.0;
-        if should_solve {
-            if let Some(checker) = &mut self.symmetry_checker {
-                if let Some(symmetries) = checker.check_for_symmetries() {
-                    amplitude_multiplier = symmetries.len() as f64;
-                } else {
-                    should_solve = false;
+        if s_b_xr_overlap_even_parity && s_g_xr_overlap_even_parity {
+            Some(())
+        } else {
+            None
+        }
+    }
+
+    #[inline(never)]
+    pub fn dmitri_check(&mut self) -> Option<BTreeSet<u16>> {
+        if let Some(checker) = &mut self.symmetry_checker {
+            if let Some(symmetries) = checker.check_for_symmetries() {
+                // #[cfg(debug_assertions)]
+                // println!("symmetries detected for {:?} - {:?}", checker.current_bit_pattern, symmetries);
+                let mut clone = symmetries.clone();
+                clone.insert(checker.current_bit_pattern);
+                self.symmetry_groups.insert(checker.current_bit_pattern, clone);
+                for symm in symmetries.clone() {
+                    let mut clone = symmetries.clone();
+                    clone.insert(checker.current_bit_pattern);
+                    self.symmetry_groups.insert(symm, clone);
                 }
+                return Some(symmetries)
+            } else {
+                #[cfg(debug_assertions)]
+                self.dmitri_skips.insert(checker.current_bit_pattern);
+                // println!("dmitri check woulda skipped bit [{}]: group: [{:?}]", checker.current_bit_pattern, self.symmetry_groups.get(&checker.current_bit_pattern).unwrap());
+                return None
             }
         }
-        if should_solve {
-            self.solver.solve(&self.gamma, &self.sb_delta_b)?;
-            if !self.solver.is_full_rank() && !self.solver.is_nullspace_codeword(&self.sg_delta_g) {
-                return None;
-            }
-            let xg = &mut self.solver.solution;
-            let mut sg_delta_g_xg_overlap = 0;
-            for (idx, bit) in xg.iter().by_vals().enumerate() {
-                let sg_delta_g_i = self.sg_delta_g[idx];
-                if sg_delta_g_i & bit {
-                    sg_delta_g_xg_overlap += 1;
-                }
-            }
-            let mut sr_xr_overlap = 0;
-            for (idx, bit) in s_r.iter().by_vals().enumerate() {
-                if bit & self.x_r[idx] {
-                    sr_xr_overlap += 1;
-                }
-            }
-            let phase_exponent = sg_delta_g_xg_overlap + sr_xr_overlap % 2;
-            let phase: f64 = (-1.0).pow(phase_exponent);
-            let rank = self.solver.rank();
-            let amplitude_increment: f64 = phase / ((1 << rank) as f64);
-            return Some(amplitude_increment * amplitude_multiplier);
+        unreachable!()
+    }
+
+    // extremely performance sensitive function - this is called an exponential amount of times
+    pub fn solve_if_gamma_null_space_quick_check(
+        &mut self,
+        s_b: &BitVec,
+        s_g: &BitVec,
+        s_r: &BitVec,
+    ) -> Option<f64> {
+        self.dmitri_check();
+        self.sergey_check(s_b, s_g)?;
+        let amplitude_multiplier = 1.0;
+        self.solver.solve(&self.gamma, &self.sb_delta_b)?;
+        if !self.solver.is_full_rank() && !self.solver.is_nullspace_codeword(&self.sg_delta_g) {
+            return None;
         }
-        None
+        let xg = &mut self.solver.solution;
+        let mut sg_delta_g_xg_overlap = 0;
+        for (idx, bit) in xg.iter().by_vals().enumerate() {
+            let sg_delta_g_i = self.sg_delta_g[idx];
+            if sg_delta_g_i & bit {
+                sg_delta_g_xg_overlap += 1;
+            }
+        }
+        let mut sr_xr_overlap = 0;
+        for (idx, bit) in s_r.iter().by_vals().enumerate() {
+            if bit & self.x_r[idx] {
+                sr_xr_overlap += 1;
+            }
+        }
+        let phase_exponent = sg_delta_g_xg_overlap + sr_xr_overlap % 2;
+        let phase: f64 = (-1.0).pow(phase_exponent);
+        let rank = self.solver.rank();
+        let amplitude_increment: f64 = phase / ((1 << rank) as f64);
+        self.increments.insert(self.symmetry_checker.as_ref().unwrap().current_bit_pattern, amplitude_increment);
+        Some(amplitude_increment * amplitude_multiplier)
     }
 
     // extremely performance sensitive function - this is called an exponential amount of times
     pub fn update_with_flip_bit(&mut self, flip_bit: u32, phase_graph: &PolynomialGraph) {
         let flip_index = flip_bit as usize;
         if let Some(ss) = &mut self.symmetry_checker {
-            ss.flip_bit_at(flip_bit);
+            ss.increment_bit(Some(flip_bit));
+            // ss.increment_bit(None);
         }
         let to_flip = !self.x_r[flip_index];
         unsafe {
