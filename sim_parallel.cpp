@@ -11,6 +11,8 @@
 #include <vector>
 #include <chrono>
 #include <cassert>
+#include <thread>
+#include <future>
 
 using std::endl;
 using std::cout;
@@ -131,11 +133,8 @@ struct clifford_circuit
 clifford_amplitude ExponentialSumReal(clifford_circuit C)
 {    
     unsigned n = num_qubits_clif;
-        
-    if (n>64) {
-       cout<<"ExponentialSumReal:error, expect n<=64"<<endl;
-       exit(1);
-    }
+        // define output basis vector |s> of the QuEra circuit
+
 
     clifford_amplitude a_out;
     a_out.sign = 0;
@@ -249,7 +248,7 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
 
     a_out.sign = 1-2*sigma;
     a_out.pow2 = pow2 - n;
-    assert(a_out.pow2<=0);
+    // assert(a_out.pow2<=0);
    return a_out;
 
 }
@@ -284,13 +283,55 @@ unsigned qubit_index(unsigned qubit)
 
 const long unsigned one = 1ul;
 
+double exponential_task(std::tuple<unsigned long, unsigned long> boundaries, clifford_circuit C, unsigned long sR, const unsigned long* P1, const unsigned long (*P2)[num_qubits_clif])
+{ 
+    unsigned long start = std::get<0>(boundaries);
+    unsigned long end = std::get<1>(boundaries);
+    double amplitude = 0.0;
+    for (long unsigned x = start; x<=end; x++) {
+        // y = gray code encoding of x
+        long unsigned y = x ^ (x>>1);
+        long unsigned xprev = x - one;
+        long unsigned yprev = xprev ^ (xprev>>1);
+        // u = bit where gray_code(x) and gray_code(x-1) differ
+        unsigned u = __builtin_ffs (y ^ yprev);  
+        // assert(u>=1);
+        u-=1;
+        // assert(u>=0);
+        // assert(u<num_nodes);
+        for (unsigned q=0; q<num_qubits_clif; q++) {
+            unsigned long pval = P2[u][q];
+            C.M[q]^= pval;
+        }
+        C.L^= P1[u];
+
+        // quick test that can detect -H-CZ-Z-H- circuit with zero amplitude
+        bool test1 = ((__builtin_popcountl(y & C.L) % 2)==0);
+        bool test2 = ((__builtin_popcountl(y & (C.L>>num_nodes)) % 2)==0);
+        if (test1 && test2)
+        {
+            clifford_amplitude a = ExponentialSumReal(C);// this is likely to be the most expensive step
+            int overlap = (__builtin_popcountl(sR & y) % 2);
+            // assert((num_nodes-a.pow2)>=0);
+            if (a.sign!=0) {
+                amplitude += ((a.sign)*(1-2*overlap)*(1.0/double(one<<(num_nodes-a.pow2))));
+            } else {
+                amplitude += 0.0;
+            }
+        }
+    }
+    return amplitude;
+}
+
 int main()
 {
 
+    long unsigned s = 123;
+    unsigned n = num_qubits;
+    cout<<"Qubits="<<num_qubits<<endl;
+    cout<<"output string s="<<s<<endl;
+    auto begin = std::chrono::high_resolution_clock::now();
 
-auto begin = std::chrono::high_resolution_clock::now();
-
-unsigned n = num_qubits;
 
 // partition 3*2^k qubits into red, blue, and green. There are 2^k qubits of each color.
 vector<unsigned> Red;
@@ -355,11 +396,6 @@ for (unsigned direction=0; direction<k; direction++)
 
 
 
-// define output basis vector |s> of the QuEra circuit
-long unsigned s = 123;
-cout<<"Qubits="<<num_qubits<<endl;
-cout<<"output string s="<<s<<endl;
-
 // project s onto red, blue, and green qubits
 long unsigned sR = 0ul;
 long unsigned sB = 0ul;
@@ -418,32 +454,31 @@ clifford_amplitude a = ExponentialSumReal(C);
 double amplitude = 0.0;
 if (a.sign!=0) amplitude = 1.0*(a.sign)/(one<<(num_nodes-a.pow2));
 // iterate over gray code index of bit strings of length num_nodes
-for (long unsigned x = 1; x<N; x++)
-{   
-
-    // y = gray code encoding of x
-    long unsigned y = x ^ (x>>1);
-    long unsigned xprev = x - one;
-    long unsigned yprev = xprev ^ (xprev>>1);
-    // u = bit where gray_code(x) and gray_code(x-1) differ
-    unsigned u = __builtin_ffs (y ^ yprev);  
-    assert(u>=1);
-    u-=1;
-    assert(u>=0);
-    assert(u<num_nodes);
-    for (unsigned q=0; q<num_qubits_clif; q++) C.M[q]^= P2[u][q];
-    C.L^= P1[u];
-
-    // quick test that can detect -H-CZ-Z-H- circuit with zero amplitude
-    bool test1 = ((__builtin_popcountl(y & C.L) % 2)==0);
-    bool test2 = ((__builtin_popcountl(y & (C.L>>num_nodes)) % 2)==0);
-    if (test1 && test2)
-    {
-    clifford_amplitude a = ExponentialSumReal(C);// this is likely to be the most expensive step
-    int overlap = (__builtin_popcountl(sR & y) % 2);
-    assert((num_nodes-a.pow2)>=0);
-    if (a.sign!=0) amplitude+=((a.sign)*(1-2*overlap)*(1.0/double(one<<(num_nodes-a.pow2))));
+// has to be a power of two to evenly divide the set
+const unsigned long N_TASKS = 1<<7;
+std::future<double> futures[N_TASKS];
+for (unsigned long i = 0; i < N_TASKS; ++i) {
+    unsigned long n_multiple = N / N_TASKS;
+    unsigned long start;
+    unsigned long end = n_multiple * (i + 1);
+    if (i == 0) {
+        start = 1;
+    } else {
+        start = n_multiple * i;
     }
+    std::tuple<long unsigned, long unsigned> bitstring_boundaries = std::make_tuple(
+        start,
+        end
+    );
+    clifford_circuit Ccopy;
+    Ccopy = C;
+    futures[i] = std::async(std::launch::async, [=] {
+        return exponential_task(bitstring_boundaries, Ccopy, sR, std::ref(P1), std::ref(P2));
+    });
+}
+// Wait for all the tasks to complete
+for (int i = 0; i < N_TASKS; ++i) {
+    futures[i].wait();
 }
 auto end = std::chrono::high_resolution_clock::now();
 auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
