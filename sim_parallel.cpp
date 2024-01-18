@@ -486,6 +486,7 @@ for (unsigned long i = 0; i < N_TASKS; ++i) {
 // Wait for all the tasks to complete
 for (unsigned i = 0; i < N_TASKS; ++i) {
     futures[i].wait();
+    amplitude += futures[i].get();
 }
 auto end = std::chrono::high_resolution_clock::now();
 auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
