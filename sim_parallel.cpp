@@ -24,6 +24,9 @@ using std::pair;
 // dimension of the hypercube
 #define k 4
 
+const long unsigned one = 1ul;
+
+
 // number of nodes in the hypercube = 2^k
 #define num_nodes (1<<k)
 
@@ -77,7 +80,7 @@ void apply_cnot(phase_poly &P, unsigned con, unsigned tar)
 {   
     phase_poly P1(P);
 
-    for (set<set<unsigned> >::iterator it=P.begin(); it!=P.end(); it++)
+    for (set<set<unsigned> >::iterator it=P.begin(); it!=P.end(); ++it)
     {
         // check if the monomial *it contains the target qubit
         if ((*it).find(tar)!=(*it).end())
@@ -134,17 +137,12 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
 {    
     unsigned n = num_qubits_clif;
         // define output basis vector |s> of the QuEra circuit
-
-
     clifford_amplitude a_out;
     a_out.sign = 0;
     a_out.pow2 = 0;
-
-    long unsigned one=1ul;
     
     size_t pow2=0;
     bool sigma=0;
-    bool isZero=0;
      
     bool active[64];
     for (size_t j=0; j<n; j++)
@@ -155,13 +153,20 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
     while (nActive>=1)
     {
       // find the first active variable
-      size_t i1;
-      for (i1=0; i1<n; i1++)
-          if (active[i1])
-              break;
+      size_t i1 = 0;
+      while(!active[i1]) {
+        i1 += 1;
+        if (i1 == n - 1) {
+            break;
+        }
+      }
+
       
       // find i2 such that M(i1,i2)!=M(i2,i1)
       size_t i2;
+      if (i1 == n) {
+        i1 = 0;
+      }
       bool isFound=false;
       for (i2=0; i2<n; i2++)
       {
@@ -256,10 +261,10 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
 void print_phase_poly(phase_poly &P)
 {
 
-    for (set<set<unsigned> >::iterator it=P.begin(); it!=P.end(); it++)
+    for (set<set<unsigned> >::iterator it=P.begin(); it!=P.end(); ++it)
     {
         cout<<"Monomial=(";
-        for (set<unsigned>::iterator it1=(*it).begin(); it1!=(*it).end(); it1++)
+        for (set<unsigned>::iterator it1=(*it).begin(); it1!=(*it).end(); ++it1)
             cout<<(*it1)<<",";
         cout<<")"<<endl;
     }
@@ -280,8 +285,6 @@ unsigned qubit_index(unsigned qubit)
     return out;
 }
 
-
-const long unsigned one = 1ul;
 
 double exponential_task(std::tuple<unsigned long, unsigned long> boundaries, clifford_circuit C, unsigned long sR, const unsigned long* P1, const unsigned long (*P2)[num_qubits_clif])
 { 
@@ -326,10 +329,13 @@ double exponential_task(std::tuple<unsigned long, unsigned long> boundaries, cli
 int main()
 {
 
-    long unsigned s = 123;
-    unsigned n = num_qubits;
+    std::vector<bool> s = {true, true, true};
     cout<<"Qubits="<<num_qubits<<endl;
-    cout<<"output string s="<<s<<endl;
+    cout<<"output string s=0b";
+    for (std::vector<bool>::reverse_iterator it = s.rbegin(); it != s.rend(); ++it) {
+        std::cout << (*it ? "1" : "0") << " ";
+    }
+    cout<<endl;
     auto begin = std::chrono::high_resolution_clock::now();
 
 
@@ -400,11 +406,13 @@ for (unsigned direction=0; direction<k; direction++)
 long unsigned sR = 0ul;
 long unsigned sB = 0ul;
 long unsigned sG = 0ul;
-for (unsigned i=0; i<num_nodes; i++)
+unsigned s_index = 0;
+for (unsigned i = 0; s_index < s.size(); i++)
 {
-    sR^= ((s>>(3*i)) & one)<<i;
-    sB^= ((s>>(3*i+1)) & one)<<i;
-    sG^= ((s>>(3*i+2)) & one)<<i;
+    sR^= (s[s_index] & one)<<i;
+    sB^= (s[s_index] & one)<<i;
+    sG^= (s[s_index] & one)<<i;
+    s_index += 3;
 }
 
 
@@ -415,10 +423,10 @@ C.L = sB ^ (sG<<num_nodes);
 
 // repackage the phase polynomial 
 // group monomials that contain a given red variable
-long unsigned P2[num_nodes][num_qubits_clif] = {0ul}; 
+long unsigned P2[num_nodes][num_qubits_clif] = { {0ul} }; 
 long unsigned  P1[num_nodes] = {0ul};
 
-for (set<set<unsigned> >::iterator it=P.begin(); it!=P.end(); it++)
+for (set<set<unsigned> >::iterator it=P.begin(); it!=P.end(); ++it)
 {   
     // we should not get linear terms
     assert((*it).size()>=1);
@@ -455,7 +463,7 @@ double amplitude = 0.0;
 if (a.sign!=0) amplitude = 1.0*(a.sign)/(one<<(num_nodes-a.pow2));
 // iterate over gray code index of bit strings of length num_nodes
 // has to be a power of two to evenly divide the set
-const unsigned long N_TASKS = 1<<7;
+const unsigned long N_TASKS = 1 << 7;
 std::future<double> futures[N_TASKS];
 for (unsigned long i = 0; i < N_TASKS; ++i) {
     unsigned long n_multiple = N / N_TASKS;
@@ -477,7 +485,7 @@ for (unsigned long i = 0; i < N_TASKS; ++i) {
     });
 }
 // Wait for all the tasks to complete
-for (int i = 0; i < N_TASKS; ++i) {
+for (unsigned i = 0; i < N_TASKS; ++i) {
     futures[i].wait();
 }
 auto end = std::chrono::high_resolution_clock::now();
