@@ -402,10 +402,10 @@ for (set<set<unsigned> >::iterator it=P.begin(); it!=P.end(); it++)
     
     assert(has_red || has_blue || has_green);
 
-    if ( (has_red) && (has_blue) && (has_green) ) P2[red][blue]^= (1<<green);
-    if ( (!has_red) && (has_blue) && (has_green) ) C.M[blue]^= (1<<green);
-    if ( (has_red) && (!has_blue) && (has_green) ) P1[red]^= (1<<green);
-    if ( (has_red) && (has_blue) && (!has_green) ) P1[red]^= (1<<blue);
+    if ( (has_red) && (has_blue) && (has_green) ) P2[red][blue]^= (one<<green);
+    if ( (!has_red) && (has_blue) && (has_green) ) C.M[blue]^= (one<<green);
+    if ( (has_red) && (!has_blue) && (has_green) ) P1[red]^= (one<<green);
+    if ( (has_red) && (has_blue) && (!has_green) ) P1[red]^= (one<<blue);
 }
 
 
