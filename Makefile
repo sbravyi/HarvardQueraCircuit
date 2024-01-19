@@ -6,7 +6,7 @@ CFLAGS = -O3
 ex : sim.cpp $(DEPS)
 	${CC} ${CFLAGS} sim.cpp -o $@
 
-ex_parallel : sim.cpp $(DEPS)
+ex_parallel : sim_parallel.cpp $(DEPS)
 	${CC} ${CFLAGS} sim_parallel.cpp -o $@ -lpthread
 
 clean :

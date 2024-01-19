@@ -443,7 +443,12 @@ for (long unsigned x = 1; x<N; x++)
     clifford_amplitude a = ExponentialSumReal(C);// this is likely to be the most expensive step
     int overlap = (__builtin_popcountl(sR & y) % 2);
     assert((num_nodes-a.pow2)>=0);
-    if (a.sign!=0) amplitude+=((a.sign)*(1-2*overlap)*(1.0/double(one<<(num_nodes-a.pow2))));
+    if (a.sign!=0) {
+        double amp_inc = ((a.sign)*(1-2*overlap)*(1.0/double(one<<(num_nodes-a.pow2))));
+        // cout << "amplitude change on " << x << " from:(" << amplitude << ")" << endl;
+        // cout << "amp inc(" << amp_inc << "," << x << ")" << endl;
+        amplitude += amp_inc;
+    }
     }
 }
 auto end = std::chrono::high_resolution_clock::now();

@@ -13,6 +13,7 @@
 #include <cassert>
 #include <thread>
 #include <future>
+#include <algorithm>
 
 using std::endl;
 using std::cout;
@@ -22,7 +23,7 @@ using std::vector;
 using std::pair;
 
 // dimension of the hypercube
-#define k 5
+#define k 4
 
 const long unsigned one = 1ul;
 
@@ -136,13 +137,21 @@ struct clifford_circuit
 clifford_amplitude ExponentialSumReal(clifford_circuit C)
 {    
     unsigned n = num_qubits_clif;
-        // define output basis vector |s> of the QuEra circuit
+        
+    if (n>64) {
+       cout<<"ExponentialSumReal:error, expect n<=64"<<endl;
+       exit(1);
+    }
+
     clifford_amplitude a_out;
     a_out.sign = 0;
     a_out.pow2 = 0;
+
+    long unsigned one=1ul;
     
     size_t pow2=0;
     bool sigma=0;
+    bool isZero=0;
      
     bool active[64];
     for (size_t j=0; j<n; j++)
@@ -153,25 +162,19 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
     while (nActive>=1)
     {
       // find the first active variable
-      size_t i1 = 0;
-      while(!active[i1]) {
-        i1 += 1;
-        if (i1 == n - 1) {
-            break;
-        }
-      }
-
+      size_t i1;
+      for (i1=0; i1<n; i1++)
+          if (active[i1])
+              break;
       
       // find i2 such that M(i1,i2)!=M(i2,i1)
-    size_t i2 = 0;
-    bool isFound=false;
-    while(!isFound) {
-        isFound = ( ((C.M[i1]>>i2) & one) != ((C.M[i2]>>i1) & one) );
-        if (i2 == n - 1) {
-            break;
-        }
-        i2 += 1;
-    }
+      size_t i2;
+      bool isFound=false;
+      for (i2=0; i2<n; i2++)
+      {
+          isFound = ( ((C.M[i1]>>i2) & one) != ((C.M[i2]>>i1) & one) );
+          if (isFound) break;
+      }
       
       bool L1 = ((C.L>>i1) & one) ^ ((C.M[i1]>>i1) & one);
       
@@ -252,11 +255,10 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
 
     a_out.sign = 1-2*sigma;
     a_out.pow2 = pow2 - n;
-    // assert(a_out.pow2<=0);
+    assert(a_out.pow2<=0);
    return a_out;
 
 }
-
 void print_phase_poly(phase_poly &P)
 {
 
@@ -290,6 +292,21 @@ double exponential_task(std::tuple<unsigned long, unsigned long> boundaries, cli
     unsigned long start = std::get<0>(boundaries);
     unsigned long end = std::get<1>(boundaries);
     double amplitude = 0.0;
+    // initial circuit population
+    if (start != 1) {
+        long unsigned before_start = start - 1;
+        long unsigned starting_gray_code = before_start ^ (before_start>>1);
+        for (unsigned bit_idx = 0; bit_idx < num_nodes; bit_idx++) {
+            long unsigned starting_code_bitval = starting_gray_code & (one << bit_idx);
+            if (starting_code_bitval) {
+                for (unsigned q=0; q<num_qubits_clif; q++) {
+                    unsigned long pval = P2[bit_idx][q];
+                    C.M[q]^= pval;
+                }
+                C.L^= P1[bit_idx];
+            }
+        }
+    }
     for (long unsigned x = start; x<end; x++) {
         // y = gray code encoding of x
         long unsigned y = x ^ (x>>1);
@@ -316,9 +333,10 @@ double exponential_task(std::tuple<unsigned long, unsigned long> boundaries, cli
             int overlap = (__builtin_popcountl(sR & y) % 2);
             // assert((num_nodes-a.pow2)>=0);
             if (a.sign!=0) {
-                amplitude += ((a.sign)*(1-2*overlap)*(1.0/double(one<<(num_nodes-a.pow2))));
-            } else {
-                amplitude += 0.0;
+                double amp_inc = ((a.sign)*(1-2*overlap)*(1.0/double(one<<(num_nodes-a.pow2))));
+                // cout << "amplitude change on " << x << " from:(" << amplitude << ")" << endl;
+                // cout << "amp inc(" << amp_inc << "," << x << ")" << endl;
+                amplitude += amp_inc;
             }
         }
     }
@@ -328,13 +346,13 @@ double exponential_task(std::tuple<unsigned long, unsigned long> boundaries, cli
 int main()
 {
 
-    std::vector<bool> s = {true, true, true};
-    cout<<"Qubits="<<num_qubits<<endl;
-    cout<<"output string s=0b";
-    for (std::vector<bool>::reverse_iterator it = s.rbegin(); it != s.rend(); ++it) {
-        std::cout << (*it ? "1" : "0") << " ";
-    }
-    cout<<endl;
+    // std::vector<bool> s = {true, true, true};
+    // cout<<"Qubits="<<num_qubits<<endl;
+    // cout<<"output string s=0b";
+    // for (std::vector<bool>::reverse_iterator it = s.rbegin(); it != s.rend(); ++it) {
+    //     std::cout << (*it ? "1" : "0") << " ";
+    // }
+    // cout<<endl;
     auto begin = std::chrono::high_resolution_clock::now();
 
 
@@ -401,19 +419,34 @@ for (unsigned direction=0; direction<k; direction++)
 
 
 
+// // project s onto red, blue, and green qubits
+// long unsigned sR = 0ul;
+// long unsigned sB = 0ul;
+// long unsigned sG = 0ul;
+// unsigned s_index = 0;
+// for (unsigned i = 0; s_index < s.size(); i++)
+// {
+//     sR^= (s[s_index] & one)<<i;
+//     sB^= (s[s_index] & one)<<i;
+//     sG^= (s[s_index] & one)<<i;
+//     s_index += 3;
+// }
+
+// define output basis vector |s> of the QuEra circuit
+long unsigned s = 123;
+cout<<"Qubits="<<num_qubits<<endl;
+cout<<"output string s="<<s<<endl;
+
 // project s onto red, blue, and green qubits
 long unsigned sR = 0ul;
 long unsigned sB = 0ul;
 long unsigned sG = 0ul;
-unsigned s_index = 0;
-for (unsigned i = 0; s_index < s.size(); i++)
+for (unsigned i=0; i<num_nodes; i++)
 {
-    sR^= (s[s_index] & one)<<i;
-    sB^= (s[s_index] & one)<<i;
-    sG^= (s[s_index] & one)<<i;
-    s_index += 3;
+    sR^= ((s>>(3*i)) & one)<<i;
+    sB^= ((s>>(3*i+1)) & one)<<i;
+    sG^= ((s>>(3*i+2)) & one)<<i;
 }
-
 
 // initial -H-CZ-Z-H- circuit on blue+green qubits. All red qubits are set to zero.
 clifford_circuit C;
@@ -462,7 +495,7 @@ double amplitude = 0.0;
 if (a.sign!=0) amplitude = 1.0*(a.sign)/(one<<(num_nodes-a.pow2));
 // iterate over gray code index of bit strings of length num_nodes
 // has to be a power of two to evenly divide the set
-const unsigned long N_TASKS = 1 << 7;
+const unsigned long N_TASKS = std::min(N/4, (1UL << 5));
 std::future<double> futures[N_TASKS];
 for (unsigned long i = 0; i < N_TASKS; ++i) {
     unsigned long n_multiple = N / N_TASKS;
@@ -477,10 +510,8 @@ for (unsigned long i = 0; i < N_TASKS; ++i) {
         start,
         end
     );
-    clifford_circuit Ccopy;
-    Ccopy = C;
     futures[i] = std::async(std::launch::async, [=] {
-        return exponential_task(bitstring_boundaries, Ccopy, sR, std::ref(P1), std::ref(P2));
+        return exponential_task(bitstring_boundaries, C, sR, std::ref(P1), std::ref(P2));
     });
 }
 // Wait for all the tasks to complete
