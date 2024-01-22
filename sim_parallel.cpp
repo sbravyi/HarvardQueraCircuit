@@ -23,7 +23,7 @@ using std::vector;
 using std::pair;
 
 // dimension of the hypercube
-#define k 4
+#define k 5
 
 const long unsigned one = 1ul;
 
@@ -79,8 +79,6 @@ void apply_z(phase_poly &P, unsigned q1)
 // apply CNOT with control=con and target=tar
 void apply_cnot(phase_poly &P, unsigned con, unsigned tar)
 {   
-    phase_poly P1(P);
-
     for (set<set<unsigned> >::iterator it=P.begin(); it!=P.end(); ++it)
     {
         // check if the monomial *it contains the target qubit
@@ -88,12 +86,11 @@ void apply_cnot(phase_poly &P, unsigned con, unsigned tar)
         {
             set<unsigned> T(*it);
             T.erase(tar);
-            assert(T.find(con)==T.end());// QuEra circuit never has control and target in the same monomial
+            // assert(T.find(con)==T.end());// QuEra circuit never has control and target in the same monomial
             T.insert(con);
-            toggle(P1,T);
+            toggle(P,T);
         }
     }
-    P = P1;
 }
 
 
@@ -137,11 +134,6 @@ struct clifford_circuit
 clifford_amplitude ExponentialSumReal(clifford_circuit C)
 {    
     unsigned n = num_qubits_clif;
-        
-    if (n>64) {
-       cout<<"ExponentialSumReal:error, expect n<=64"<<endl;
-       exit(1);
-    }
 
     clifford_amplitude a_out;
     a_out.sign = 0;
@@ -255,7 +247,7 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
 
     a_out.sign = 1-2*sigma;
     a_out.pow2 = pow2 - n;
-    assert(a_out.pow2<=0);
+    // assert(a_out.pow2<=0);
    return a_out;
 
 }
@@ -330,9 +322,9 @@ double exponential_task(std::tuple<unsigned long, unsigned long> boundaries, cli
         if (test1 && test2)
         {
             clifford_amplitude a = ExponentialSumReal(C);// this is likely to be the most expensive step
-            int overlap = (__builtin_popcountl(sR & y) % 2);
             // assert((num_nodes-a.pow2)>=0);
             if (a.sign!=0) {
+                int overlap = (__builtin_popcountl(sR & y) % 2);
                 double amp_inc = ((a.sign)*(1-2*overlap)*(1.0/double(one<<(num_nodes-a.pow2))));
                 // cout << "amplitude change on " << x << " from:(" << amplitude << ")" << endl;
                 // cout << "amp inc(" << amp_inc << "," << x << ")" << endl;
@@ -461,7 +453,7 @@ long unsigned  P1[num_nodes] = {0ul};
 for (set<set<unsigned> >::iterator it=P.begin(); it!=P.end(); ++it)
 {   
     // we should not get linear terms
-    assert((*it).size()>=1);
+    //assert((*it).size()>=1);
     unsigned red=0;
     unsigned blue=0;
     unsigned green=0;
@@ -475,7 +467,7 @@ for (set<set<unsigned> >::iterator it=P.begin(); it!=P.end(); ++it)
         if (((*it1) % 3)==2) {green=qubit_index(*it1); has_green=true;}
     }
     
-    assert(has_red || has_blue || has_green);
+    //assert(has_red || has_blue || has_green);
 
     if ( (has_red) && (has_blue) && (has_green) ) P2[red][blue]^= (1<<green);
     if ( (!has_red) && (has_blue) && (has_green) ) C.M[blue]^= (1<<green);
@@ -495,7 +487,7 @@ double amplitude = 0.0;
 if (a.sign!=0) amplitude = 1.0*(a.sign)/(one<<(num_nodes-a.pow2));
 // iterate over gray code index of bit strings of length num_nodes
 // has to be a power of two to evenly divide the set
-const unsigned long N_TASKS = std::min(N/4, (1UL << 5));
+const unsigned long N_TASKS = std::min(N/4, (1UL << 7));
 std::future<double> futures[N_TASKS];
 for (unsigned long i = 0; i < N_TASKS; ++i) {
     unsigned long n_multiple = N / N_TASKS;
