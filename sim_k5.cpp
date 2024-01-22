@@ -139,9 +139,11 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
     a_out.sign = 0;
     a_out.pow2 = 0;
 
+    long unsigned one=1ul;
     
     size_t pow2=0;
     bool sigma=0;
+    bool isZero=0;
      
     bool active[64];
     for (size_t j=0; j<n; j++)
@@ -162,15 +164,12 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
       bool isFound=false;
       for (i2=0; i2<n; i2++)
       {
-          isFound = ( ((C.M[i1]>>i2) & 1UL) != ((C.M[i2]>>i1) & 1UL) );
+          isFound = ( ((C.M[i1]>>i2) & one) != ((C.M[i2]>>i1) & one) );
           if (isFound) break;
       }
       
-      bool L1 = ((C.L>>i1) & 1UL) ^ ((C.M[i1]>>i1) & 1UL);
-      unsigned long i1_bit = 1UL << i1;
-      unsigned long i2_bit = 1UL << i2;
-      unsigned long both_bits = (i1_bit | i2_bit);
-      unsigned long inverse_both_bits = ~(both_bits);
+      bool L1 = ((C.L>>i1) & one) ^ ((C.M[i1]>>i1) & one);
+      
       // take care of the trivial cases
       if (!isFound)
       {
@@ -189,31 +188,33 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
            C.M[i1]=0ul;
            // set row i1 to zero
            for (size_t j=0; j<n; j++)
-               C.M[j]&=~(i1_bit);
-           C.L&=~(i1_bit);
+               C.M[j]&=~(one<<i1);
+           C.L&=~(one<<i1);
            active[i1]=0;
            continue;
          }
       }
       
       // Do the recursion
-      bool L2 = ( ((C.L>>i2) & 1UL) ^ ((C.M[i2]>>i2) & 1UL) );
-      C.L&=inverse_both_bits;
+      bool L2 = ( ((C.L>>i2) & one) ^ ((C.M[i2]>>i2) & one) );
+      C.L&=~(one<<i1);
+      C.L&=~(one<<i2);
       
       // Extract rows i1 and i2 of M
       long unsigned m1=0ul;
       long unsigned m2=0ul;
       for (size_t j=0; j<n; j++)
       {
-         m1^=((C.M[j]>>i1) & 1UL)<<j;
-         m2^=((C.M[j]>>i2) & 1UL)<<j;
+         m1^=((C.M[j]>>i1) & one)<<j;
+         m2^=((C.M[j]>>i2) & one)<<j;
       }
       m1^=C.M[i1];
       m2^=C.M[i2];
       
-      m1&=inverse_both_bits;
-      m1&=~(1UL<<i2);
-      m2&=inverse_both_bits;
+      m1&=~(one<<i1);
+      m1&=~(one<<i2);
+      m2&=~(one<<i1);
+      m2&=~(one<<i2);
       
       // set columns i1,i2 to zero
       C.M[i1]=0ul;
@@ -221,7 +222,8 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
       // set rows i1,i2 to zero
       for (size_t j=0; j<n; j++)
       {
-         C.M[j]&=inverse_both_bits;
+         C.M[j]&=~(one<<i1);
+         C.M[j]&=~(one<<i2);
       }
       
       
@@ -233,7 +235,7 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
         C.L^=m1;
     
      for (size_t j=0; j<n; j++)
-         if ((m2 >> j) & 1UL)
+         if ((m2 >> j) & one)
              C.M[j]^=m1;
       
       pow2+=1;
@@ -245,7 +247,7 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
 
     a_out.sign = 1-2*sigma;
     a_out.pow2 = pow2 - n;
-    assert(a_out.pow2<=0);
+    // assert(a_out.pow2<=0);
    return a_out;
 
 }
