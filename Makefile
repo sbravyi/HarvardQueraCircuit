@@ -1,4 +1,4 @@
-all : ex ex_parallel
+all : ex_k4 ex ex_parallel
 
 CC = g++ -std=c++11
 CFLAGS = -O3
@@ -13,4 +13,4 @@ ex_k4 : sim_k4.cpp $(DEPS)
 	${CC} ${CFLAGS} sim_k4.cpp -o $@ -lpthread
 
 clean :
-	rm ex ex_parallel
+	rm ex ex_parallel ex_k4

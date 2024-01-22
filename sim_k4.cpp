@@ -487,7 +487,7 @@ double amplitude = 0.0;
 if (a.sign!=0) amplitude = 1.0*(a.sign)/(one<<(num_nodes-a.pow2));
 // iterate over gray code index of bit strings of length num_nodes
 // has to be a power of two to evenly divide the set
-const unsigned long N_TASKS = 1 << 4;
+const unsigned long N_TASKS = 1 << 5;
 std::future<double> futures[N_TASKS];
 for (unsigned long i = 0; i < N_TASKS; ++i) {
     unsigned long n_multiple = N / N_TASKS;
