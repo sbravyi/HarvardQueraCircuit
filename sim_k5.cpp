@@ -14,6 +14,7 @@
 #include <thread>
 #include <future>
 #include <algorithm>
+#include <bitset>
 
 using std::endl;
 using std::cout;
@@ -122,6 +123,8 @@ struct clifford_circuit
 
 };
 
+typedef std::size_t length_t, position_t; 
+
 // Compute amplitude <0^n|C|0^n> where C is n-qubit H-CZ-Z-H circuit 
 // To compute an amplitude <v|C|0^n> for some n-bit string v
 // toggle Z gates in the support of v
@@ -143,24 +146,21 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
     
     size_t pow2=0;
     bool sigma=0;
-    bool isZero=0;
      
-    bool active[64];
-    for (size_t j=0; j<n; j++)
-        active[j]=true;
+    std::bitset<64> active{0xffffffffffffffffUL};
     
     unsigned nActive=n;
     
     while (nActive>=1)
     {
       // find the first active variable
-      size_t i1;
+      unsigned i1;
       for (i1=0; i1<n; i1++)
           if (active[i1])
               break;
       
       // find i2 such that M(i1,i2)!=M(i2,i1)
-      size_t i2;
+      unsigned i2;
       bool isFound=false;
       for (i2=0; i2<n; i2++)
       {
@@ -190,7 +190,7 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
            for (size_t j=0; j<n; j++)
                C.M[j]&=~(one<<i1);
            C.L&=~(one<<i1);
-           active[i1]=0;
+           active[i1]=false;
            continue;
          }
       }
@@ -240,8 +240,8 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
       
       pow2+=1;
       sigma^=L1 & L2;
-      active[i1]=0;
-      active[i2]=0;      
+      active[i1]=false;
+      active[i2]=false;      
       nActive-=2;  
     }// while
 
@@ -425,7 +425,11 @@ for (unsigned direction=0; direction<k; direction++)
 // }
 
 // define output basis vector |s> of the QuEra circuit
-long unsigned s = 0b010010010010010010010010010010010010010010010010010010010010010;
+std::bitset<num_qubits> s;
+for (unsigned i = 0; i < num_qubits; i += 3) {
+    // pathological case is 010 repeating
+    s[i + 1] = true;
+}
 cout<<"Qubits="<<num_qubits<<endl;
 cout<<"output string s="<<s<<endl;
 
@@ -435,9 +439,9 @@ long unsigned sB = 0ul;
 long unsigned sG = 0ul;
 for (unsigned i=0; i<num_nodes; i++)
 {
-    sR^= ((s>>(3*i)) & one)<<i;
-    sB^= ((s>>(3*i+1)) & one)<<i;
-    sG^= ((s>>(3*i+2)) & one)<<i;
+    sR^= s[3*i]<<i;
+    sB^= s[3*i+1]<<i;
+    sG^= s[3*i+2]<<i;
 }
 
 // initial -H-CZ-Z-H- circuit on blue+green qubits. All red qubits are set to zero.
