@@ -23,8 +23,8 @@ using std::set;
 using std::vector;
 using std::pair;
 
-#ifdef fp_type__
-using fp_type = fp_type;
+#ifdef __FLOAT128__
+using fp_type = __float128;
 #else
 using fp_type = double;
 #endif
