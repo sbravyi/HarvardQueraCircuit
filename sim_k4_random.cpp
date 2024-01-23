@@ -14,7 +14,8 @@
 #include <thread>
 #include <future>
 #include <algorithm>
-#include <bitset>
+#include <random>
+#include <string>
 
 using std::endl;
 using std::cout;
@@ -23,14 +24,8 @@ using std::set;
 using std::vector;
 using std::pair;
 
-#ifdef fp_type__
-using fp_type = fp_type;
-#else
-using fp_type = double;
-#endif
-
 // dimension of the hypercube
-#define k 5
+#define k 4
 
 const long unsigned one = 1ul;
 
@@ -129,8 +124,6 @@ struct clifford_circuit
 
 };
 
-typedef std::size_t length_t, position_t; 
-
 // Compute amplitude <0^n|C|0^n> where C is n-qubit H-CZ-Z-H circuit 
 // To compute an amplitude <v|C|0^n> for some n-bit string v
 // toggle Z gates in the support of v
@@ -153,20 +146,22 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
     size_t pow2=0;
     bool sigma=0;
      
-    std::bitset<64> active{0xffffffffffffffffUL};
+    bool active[n];
+    for (size_t j=0; j<n; j++)
+        active[j]=true;
     
     unsigned nActive=n;
     
     while (nActive>=1)
     {
       // find the first active variable
-      unsigned i1;
+      size_t i1;
       for (i1=0; i1<n; i1++)
           if (active[i1])
               break;
       
       // find i2 such that M(i1,i2)!=M(i2,i1)
-      unsigned i2;
+      size_t i2;
       bool isFound=false;
       for (i2=0; i2<n; i2++)
       {
@@ -196,7 +191,7 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
            for (size_t j=0; j<n; j++)
                C.M[j]&=~(one<<i1);
            C.L&=~(one<<i1);
-           active[i1]=false;
+           active[i1]=0;
            continue;
          }
       }
@@ -246,8 +241,8 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
       
       pow2+=1;
       sigma^=L1 & L2;
-      active[i1]=false;
-      active[i2]=false;      
+      active[i1]=0;
+      active[i2]=0;      
       nActive-=2;  
     }// while
 
@@ -285,11 +280,11 @@ unsigned qubit_index(unsigned qubit)
 }
 
 
-fp_type exponential_task(std::tuple<unsigned long, unsigned long> boundaries, clifford_circuit C, unsigned long sR, const unsigned long* P1, const unsigned long (*P2)[num_qubits_clif])
+double exponential_task(std::tuple<unsigned long, unsigned long> boundaries, clifford_circuit C, unsigned long sR, const unsigned long* P1, const unsigned long (*P2)[num_qubits_clif])
 { 
     unsigned long start = std::get<0>(boundaries);
     unsigned long end = std::get<1>(boundaries);
-    fp_type amplitude = 0.0;
+    double amplitude = 0.0;
     // initial circuit population
     if (start != 1) {
         long unsigned before_start = start - 1;
@@ -331,7 +326,7 @@ fp_type exponential_task(std::tuple<unsigned long, unsigned long> boundaries, cl
             // assert((num_nodes-a.pow2)>=0);
             if (a.sign!=0) {
                 int overlap = (__builtin_popcountl(sR & y) % 2);
-                fp_type amp_inc = ((a.sign)*(1-2*overlap)*(1.0/fp_type(one<<(num_nodes-a.pow2))));
+                double amp_inc = ((a.sign)*(1-2*overlap)*(1.0/double(one<<(num_nodes-a.pow2))));
                 // cout << "amplitude change on " << x << " from:(" << amplitude << ")" << endl;
                 // cout << "amp inc(" << amp_inc << "," << x << ")" << endl;
                 amplitude += amp_inc;
@@ -341,191 +336,177 @@ fp_type exponential_task(std::tuple<unsigned long, unsigned long> boundaries, cl
     return amplitude;
 }
 
-int main()
-{
-
-    // std::vector<bool> s = {true, true, true};
-    // cout<<"Qubits="<<num_qubits<<endl;
-    // cout<<"output string s=0b";
-    // for (std::vector<bool>::reverse_iterator it = s.rbegin(); it != s.rend(); ++it) {
-    //     std::cout << (*it ? "1" : "0") << " ";
-    // }
-    // cout<<endl;
+std::chrono::nanoseconds run_sim(long unsigned s) {
     auto begin = std::chrono::high_resolution_clock::now();
 
-
-// partition 3*2^k qubits into red, blue, and green. There are 2^k qubits of each color.
-vector<unsigned> Red;
-vector<unsigned> Blue;
-vector<unsigned> Green;
-for (unsigned i=0; i<num_nodes; i++)
-{
-    Red.push_back(3*i);
-    Blue.push_back(3*i+1);
-    Green.push_back(3*i+2);
-}
-
-
-
-// phase polynomial describing the output state of QuEra circuit immediately before
-// the final H-layer
-phase_poly P;
-
-
-// apply the initial layer of "A-rectangles", see page 29 in 
-// https://arxiv.org/pdf/2312.03982.pdf
-for (unsigned i=0; i<num_nodes; i++)
-{
-    apply_ccz(P,Red[i],Blue[i],Green[i]);
-    apply_cz(P,Red[i],Blue[i]);
-    apply_cz(P,Blue[i],Green[i]);
-    apply_cz(P,Red[i],Green[i]);
-    // we ignore pauli Z gates since they can be absorbed into a Pauli frame
-}
-
-
-for (unsigned direction=0; direction<k; direction++)
-{
-    // apply CNOTs oriented along this direction on the cube
-    // cube nodes with even pariry = control qubits
-    // cube nodes with odd parity = target qubits
-    for (unsigned x=0; x<num_nodes; x++)
+    // partition 3*2^k qubits into red, blue, and green. There are 2^k qubits of each color.
+    vector<unsigned> Red;
+    vector<unsigned> Blue;
+    vector<unsigned> Green;
+    for (unsigned i=0; i<num_nodes; i++)
     {
-        if ((__builtin_popcount(x) % 2)==0)
-        {
-            unsigned y = x ^ (1<<direction);
-            apply_cnot(P,Red[x],Red[y]);
-            apply_cnot(P,Blue[x],Blue[y]);
-            apply_cnot(P,Green[x],Green[y]);
-        }
+        Red.push_back(3*i);
+        Blue.push_back(3*i+1);
+        Green.push_back(3*i+2);
     }
 
-    // alternate between layers of A or B rectangles, see page 29 in 
+    // phase polynomial describing the output state of QuEra circuit immediately before
+    // the final H-layer
+    phase_poly P;
+
+
+    // apply the initial layer of "A-rectangles", see page 29 in 
     // https://arxiv.org/pdf/2312.03982.pdf
-    // some A/B rectangles acting on nodes with even parity cancel each other
     for (unsigned i=0; i<num_nodes; i++)
     {
         apply_ccz(P,Red[i],Blue[i],Green[i]);
         apply_cz(P,Red[i],Blue[i]);
         apply_cz(P,Blue[i],Green[i]);
-        if (direction % 2) apply_cz(P,Red[i],Green[i]);
+        apply_cz(P,Red[i],Green[i]);
         // we ignore pauli Z gates since they can be absorbed into a Pauli frame
     }
-    
-}
 
 
-
-
-// // project s onto red, blue, and green qubits
-// long unsigned sR = 0ul;
-// long unsigned sB = 0ul;
-// long unsigned sG = 0ul;
-// unsigned s_index = 0;
-// for (unsigned i = 0; s_index < s.size(); i++)
-// {
-//     sR^= (s[s_index] & one)<<i;
-//     sB^= (s[s_index] & one)<<i;
-//     sG^= (s[s_index] & one)<<i;
-//     s_index += 3;
-// }
-
-// define output basis vector |s> of the QuEra circuit
-std::bitset<num_qubits> s;
-for (unsigned i = 0; i < num_qubits; i += 3) {
-    // pathological case is 010 repeating
-    s[i + 1] = true;
-}
-cout<<"Qubits="<<num_qubits<<endl;
-cout<<"output string s="<<s<<endl;
-
-// project s onto red, blue, and green qubits
-long unsigned sR = 0ul;
-long unsigned sB = 0ul;
-long unsigned sG = 0ul;
-for (unsigned i=0; i<num_nodes; i++)
-{
-    sR^= s[3*i]<<i;
-    sB^= s[3*i+1]<<i;
-    sG^= s[3*i+2]<<i;
-}
-
-// initial -H-CZ-Z-H- circuit on blue+green qubits. All red qubits are set to zero.
-clifford_circuit C;
-C.L = sB ^ (sG<<num_nodes);
-
-
-// repackage the phase polynomial 
-// group monomials that contain a given red variable
-long unsigned P2[num_nodes][num_qubits_clif] = { {0ul} }; 
-long unsigned  P1[num_nodes] = {0ul};
-
-for (set<set<unsigned> >::iterator it=P.begin(); it!=P.end(); ++it)
-{   
-    // we should not get linear terms
-    //assert((*it).size()>=1);
-    unsigned red=0;
-    unsigned blue=0;
-    unsigned green=0;
-    bool has_red = false;
-    bool has_blue = false;
-    bool has_green = false;
-    for (set<unsigned>::iterator it1=(*it).begin(); it1!=(*it).end(); it1++)
+    for (unsigned direction=0; direction<k; direction++)
     {
-        if (((*it1) % 3)==0) {red=qubit_index(*it1); has_red=true;}
-        if (((*it1) % 3)==1) {blue=qubit_index(*it1); has_blue=true;}
-        if (((*it1) % 3)==2) {green=qubit_index(*it1); has_green=true;}
-    }
-    
-    //assert(has_red || has_blue || has_green);
+        // apply CNOTs oriented along this direction on the cube
+        // cube nodes with even pariry = control qubits
+        // cube nodes with odd parity = target qubits
+        for (unsigned x=0; x<num_nodes; x++)
+        {
+            if ((__builtin_popcount(x) % 2)==0)
+            {
+                unsigned y = x ^ (1<<direction);
+                apply_cnot(P,Red[x],Red[y]);
+                apply_cnot(P,Blue[x],Blue[y]);
+                apply_cnot(P,Green[x],Green[y]);
+            }
+        }
 
-    if ( (has_red) && (has_blue) && (has_green) ) P2[red][blue]^= (1<<green);
-    if ( (!has_red) && (has_blue) && (has_green) ) C.M[blue]^= (1<<green);
-    if ( (has_red) && (!has_blue) && (has_green) ) P1[red]^= (1<<green);
-    if ( (has_red) && (has_blue) && (!has_green) ) P1[red]^= (1<<blue);
+        // alternate between layers of A or B rectangles, see page 29 in 
+        // https://arxiv.org/pdf/2312.03982.pdf
+        // some A/B rectangles acting on nodes with even parity cancel each other
+        for (unsigned i=0; i<num_nodes; i++)
+        {
+            apply_ccz(P,Red[i],Blue[i],Green[i]);
+            apply_cz(P,Red[i],Blue[i]);
+            apply_cz(P,Blue[i],Green[i]);
+            if (direction % 2) apply_cz(P,Red[i],Green[i]);
+            // we ignore pauli Z gates since they can be absorbed into a Pauli frame
+        }
+        
+    }
+
+    // project s onto red, blue, and green qubits
+    long unsigned sR = 0ul;
+    long unsigned sB = 0ul;
+    long unsigned sG = 0ul;
+    for (unsigned i=0; i<num_nodes; i++)
+    {
+        sR^= ((s>>(3*i)) & one)<<i;
+        sB^= ((s>>(3*i+1)) & one)<<i;
+        sG^= ((s>>(3*i+2)) & one)<<i;
+    }
+
+    // initial -H-CZ-Z-H- circuit on blue+green qubits. All red qubits are set to zero.
+    clifford_circuit C;
+    C.L = sB ^ (sG<<num_nodes);
+
+
+    // repackage the phase polynomial 
+    // group monomials that contain a given red variable
+    long unsigned P2[num_nodes][num_qubits_clif] = { {0ul} }; 
+    long unsigned  P1[num_nodes] = {0ul};
+
+    for (set<set<unsigned> >::iterator it=P.begin(); it!=P.end(); ++it)
+    {   
+        // we should not get linear terms
+        //assert((*it).size()>=1);
+        unsigned red=0;
+        unsigned blue=0;
+        unsigned green=0;
+        bool has_red = false;
+        bool has_blue = false;
+        bool has_green = false;
+        for (set<unsigned>::iterator it1=(*it).begin(); it1!=(*it).end(); it1++)
+        {
+            if (((*it1) % 3)==0) {red=qubit_index(*it1); has_red=true;}
+            if (((*it1) % 3)==1) {blue=qubit_index(*it1); has_blue=true;}
+            if (((*it1) % 3)==2) {green=qubit_index(*it1); has_green=true;}
+        }
+        
+        //assert(has_red || has_blue || has_green);
+
+        if ( (has_red) && (has_blue) && (has_green) ) P2[red][blue]^= (1<<green);
+        if ( (!has_red) && (has_blue) && (has_green) ) C.M[blue]^= (1<<green);
+        if ( (has_red) && (!has_blue) && (has_green) ) P1[red]^= (1<<green);
+        if ( (has_red) && (has_blue) && (!has_green) ) P1[red]^= (1<<blue);
+    }
+
+
+
+
+    // output amplitude is a sum over 2^{2^k} -H-CZ-Z-H- circuits on blue+green qubits
+    // iterate over basis vectors on red qubits
+    long unsigned N = one<<num_nodes;
+
+    clifford_amplitude a = ExponentialSumReal(C);
+    double amplitude = 0.0;
+    if (a.sign!=0) amplitude = 1.0*(a.sign)/(one<<(num_nodes-a.pow2));
+    // iterate over gray code index of bit strings of length num_nodes
+    // has to be a power of two to evenly divide the set
+    const unsigned long N_TASKS = 1 << 5;
+    std::future<double> futures[N_TASKS];
+    for (unsigned long i = 0; i < N_TASKS; ++i) {
+        unsigned long n_multiple = N / N_TASKS;
+        unsigned long start;
+        unsigned long end = n_multiple * (i + 1);
+        if (i == 0) {
+            start = 1;
+        } else {
+            start = n_multiple * i;
+        }
+        std::tuple<long unsigned, long unsigned> bitstring_boundaries = std::make_tuple(
+            start,
+            end
+        );
+        futures[i] = std::async(std::launch::async, [=] {
+            return exponential_task(bitstring_boundaries, C, sR, std::ref(P1), std::ref(P2));
+        });
+    }
+    // Wait for all the tasks to complete
+    for (unsigned i = 0; i < N_TASKS; ++i) {
+        futures[i].wait();
+        amplitude += futures[i].get();
+    }
+    auto end = std::chrono::high_resolution_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
+    printf("Time measured: %.5f seconds.\n", elapsed.count() * 1e-9);
+    cout<<"output amplitude="<<amplitude<<endl;
+    return elapsed;
 }
 
 
 
-
-// output amplitude is a sum over 2^{2^k} -H-CZ-Z-H- circuits on blue+green qubits
-// iterate over basis vectors on red qubits
-long unsigned N = one<<num_nodes;
-
-clifford_amplitude a = ExponentialSumReal(C);
-fp_type amplitude = 0.0;
-if (a.sign!=0) amplitude = 1.0*(a.sign)/(one<<(num_nodes-a.pow2));
-// iterate over gray code index of bit strings of length num_nodes
-// has to be a power of two to evenly divide the set
-const unsigned long N_TASKS = 1 << 9;
-std::future<fp_type> futures[N_TASKS];
-for (unsigned long i = 0; i < N_TASKS; ++i) {
-    unsigned long n_multiple = N / N_TASKS;
-    unsigned long start;
-    unsigned long end = n_multiple * (i + 1);
-    if (i == 0) {
-        start = 1;
+int main(int argc, const char* argv[])
+{
+    // define output basis vector |s> of the QuEra circuit
+    std::random_device rd;  
+    std::mt19937 gen(rd()); 
+    unsigned n_trials = 0;
+    if (argc < 2) {
+        n_trials = 1000;
+        cout<<"Running 1000 trials by default"<<endl;
     } else {
-        start = n_multiple * i;
+        unsigned arg_trials = std::stoul(argv[1]);
+        n_trials = arg_trials;
+        cout<<"Running " <<  arg_trials << "trials"<<endl;
     }
-    std::tuple<long unsigned, long unsigned> bitstring_boundaries = std::make_tuple(
-        start,
-        end
-    );
-    futures[i] = std::async(std::launch::async, [=] {
-        return exponential_task(bitstring_boundaries, C, sR, std::ref(P1), std::ref(P2));
-    });
+    for (unsigned i = 0; i < n_trials; i += 1) {
+        unsigned long saturated_statevec = (1UL << num_qubits) - 1;
+        std::uniform_int_distribution<int> distribution(0, saturated_statevec);
+        long unsigned s = distribution(gen);
+        cout<<"Qubits="<<num_qubits<<endl;
+        cout<<"output string s="<<s<<endl;
+    }
 }
-// Wait for all the tasks to complete
-for (unsigned i = 0; i < N_TASKS; ++i) {
-    futures[i].wait();
-    amplitude += futures[i].get();
-}
-auto end = std::chrono::high_resolution_clock::now();
-auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin);
-printf("Time measured: %.5f seconds.\n", elapsed.count() * 1e-9);
-cout<<"output amplitude="<<amplitude<<endl;
-
-}
-
-

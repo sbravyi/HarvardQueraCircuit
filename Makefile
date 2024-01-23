@@ -1,4 +1,4 @@
-all : ex_k4 ex_k5 ex ex_parallel
+all : ex_k4_worst_case ex_k5_worst_case ex_k4_random ex ex_parallel
 
 CC = g++ -std=c++11
 CFLAGS = -O3
@@ -9,11 +9,14 @@ ex : sim.cpp $(DEPS)
 ex_parallel : sim_parallel.cpp $(DEPS)
 	${CC} ${CFLAGS} sim_parallel.cpp -o $@ -lpthread
 
-ex_k4 : sim_k4.cpp $(DEPS)
-	${CC} ${CFLAGS} sim_k4.cpp -o $@ -lpthread
+ex_k4_worst_case : sim_k4_worst_case.cpp $(DEPS)
+	${CC} ${CFLAGS} sim_k4_worst_case.cpp -o $@ -lpthread
 
-ex_k5 : sim_k5.cpp $(DEPS)
-	${CC} ${CFLAGS} sim_k5.cpp -o $@ -lpthread
+ex_k5_worst_case : sim_k5_worst_case.cpp $(DEPS)
+	${CC} ${CFLAGS} sim_k5_worst_case.cpp -o $@ -lpthread
+
+ex_k4_random : sim_k4_random.cpp $(DEPS)
+	${CC} ${CFLAGS} sim_k4_random.cpp -o $@ -lpthread
 
 clean :
-	rm ex ex_parallel ex_k4 ex_k5
+	rm ex ex_parallel ex_k4_worst_case ex_k5_worst_case ex_k4_random
