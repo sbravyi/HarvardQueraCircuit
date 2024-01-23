@@ -23,6 +23,12 @@ using std::set;
 using std::vector;
 using std::pair;
 
+#ifdef fp_type__
+using fp_type = fp_type;
+#else
+using fp_type = double;
+#endif
+
 // dimension of the hypercube
 #define k 5
 
@@ -279,11 +285,11 @@ unsigned qubit_index(unsigned qubit)
 }
 
 
-double exponential_task(std::tuple<unsigned long, unsigned long> boundaries, clifford_circuit C, unsigned long sR, const unsigned long* P1, const unsigned long (*P2)[num_qubits_clif])
+fp_type exponential_task(std::tuple<unsigned long, unsigned long> boundaries, clifford_circuit C, unsigned long sR, const unsigned long* P1, const unsigned long (*P2)[num_qubits_clif])
 { 
     unsigned long start = std::get<0>(boundaries);
     unsigned long end = std::get<1>(boundaries);
-    double amplitude = 0.0;
+    fp_type amplitude = 0.0;
     // initial circuit population
     if (start != 1) {
         long unsigned before_start = start - 1;
@@ -325,7 +331,7 @@ double exponential_task(std::tuple<unsigned long, unsigned long> boundaries, cli
             // assert((num_nodes-a.pow2)>=0);
             if (a.sign!=0) {
                 int overlap = (__builtin_popcountl(sR & y) % 2);
-                double amp_inc = ((a.sign)*(1-2*overlap)*(1.0/double(one<<(num_nodes-a.pow2))));
+                fp_type amp_inc = ((a.sign)*(1-2*overlap)*(1.0/fp_type(one<<(num_nodes-a.pow2))));
                 // cout << "amplitude change on " << x << " from:(" << amplitude << ")" << endl;
                 // cout << "amp inc(" << amp_inc << "," << x << ")" << endl;
                 amplitude += amp_inc;
@@ -487,12 +493,12 @@ for (set<set<unsigned> >::iterator it=P.begin(); it!=P.end(); ++it)
 long unsigned N = one<<num_nodes;
 
 clifford_amplitude a = ExponentialSumReal(C);
-double amplitude = 0.0;
+fp_type amplitude = 0.0;
 if (a.sign!=0) amplitude = 1.0*(a.sign)/(one<<(num_nodes-a.pow2));
 // iterate over gray code index of bit strings of length num_nodes
 // has to be a power of two to evenly divide the set
 const unsigned long N_TASKS = 1 << 9;
-std::future<double> futures[N_TASKS];
+std::future<fp_type> futures[N_TASKS];
 for (unsigned long i = 0; i < N_TASKS; ++i) {
     unsigned long n_multiple = N / N_TASKS;
     unsigned long start;
