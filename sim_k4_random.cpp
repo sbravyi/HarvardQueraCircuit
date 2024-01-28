@@ -285,12 +285,13 @@ double exponential_task(std::tuple<unsigned long, unsigned long> boundaries, cli
     unsigned long start = std::get<0>(boundaries);
     unsigned long end = std::get<1>(boundaries);
     double amplitude = 0.0;
+    long unsigned before_start = start - 1;
+    unsigned long yprev = before_start ^ (before_start>>1);
+    unsigned long last_updated = yprev;
     // initial circuit population
     if (start != 1) {
-        long unsigned before_start = start - 1;
-        long unsigned starting_gray_code = before_start ^ (before_start>>1);
         for (unsigned bit_idx = 0; bit_idx < num_nodes; bit_idx++) {
-            long unsigned starting_code_bitval = starting_gray_code & (one << bit_idx);
+            long unsigned starting_code_bitval = yprev & (one << bit_idx);
             if (starting_code_bitval) {
                 for (unsigned q=0; q<num_qubits_clif; q++) {
                     unsigned long pval = P2[bit_idx][q];
@@ -303,18 +304,10 @@ double exponential_task(std::tuple<unsigned long, unsigned long> boundaries, cli
     for (long unsigned x = start; x<end; x++) {
         // y = gray code encoding of x
         long unsigned y = x ^ (x>>1);
-        long unsigned xprev = x - one;
-        long unsigned yprev = xprev ^ (xprev>>1);
         // u = bit where gray_code(x) and gray_code(x-1) differ
         unsigned u = __builtin_ffs (y ^ yprev);  
-        // assert(u>=1);
+        yprev = y;
         u-=1;
-        // assert(u>=0);
-        // assert(u<num_nodes);
-        for (unsigned q=0; q<num_qubits_clif; q++) {
-            unsigned long pval = P2[u][q];
-            C.M[q]^= pval;
-        }
         C.L^= P1[u];
 
         // quick test that can detect -H-CZ-Z-H- circuit with zero amplitude
@@ -322,6 +315,16 @@ double exponential_task(std::tuple<unsigned long, unsigned long> boundaries, cli
         bool test2 = ((__builtin_popcountl(y & (C.L>>num_nodes)) % 2)==0);
         if (test1 && test2)
         {
+            long unsigned diff = last_updated ^ y;
+            for (unsigned bit_idx = 0; bit_idx < num_nodes; bit_idx++) {
+                if (diff & (1UL << bit_idx)) {
+                    for (unsigned q=0; q<num_qubits_clif; q++) {
+                        unsigned long pval = P2[bit_idx][q];
+                        C.M[q]^= pval;
+                    }
+                }
+            }
+            last_updated = y;
             clifford_amplitude a = ExponentialSumReal(C);// this is likely to be the most expensive step
             // assert((num_nodes-a.pow2)>=0);
             if (a.sign!=0) {
