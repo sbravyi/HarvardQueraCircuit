@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "Citation for Harvard/QuEra circuit simulation"
+authors:
+  - family-names: Bravyi
+    given-names: Sergey
+    orcid: https://orcid.org/0000-0002-4032-470X
+title: "Harvard/QuEra Circuit Simulation Suite"
+version: 1.0.0
+date-released: 2024-01-27
