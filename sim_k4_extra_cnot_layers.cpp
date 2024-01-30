@@ -336,7 +336,7 @@ double exponential_task(std::tuple<unsigned long, unsigned long> boundaries, cli
     return amplitude;
 }
 
-std::chrono::nanoseconds run_sim(long unsigned s) {
+std::chrono::nanoseconds run_sim(long unsigned s, unsigned n_random_layers) {
     auto begin = std::chrono::high_resolution_clock::now();
 
     // partition 3*2^k qubits into red, blue, and green. There are 2^k qubits of each color.
@@ -393,6 +393,45 @@ std::chrono::nanoseconds run_sim(long unsigned s) {
             apply_cz(P,Blue[i],Green[i]);
             if (direction % 2) apply_cz(P,Red[i],Green[i]);
             // we ignore pauli Z gates since they can be absorbed into a Pauli frame
+        }
+        
+    }
+
+    // generate N random layers
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    std::uniform_int_distribution<unsigned> random_direction(0, k - 1);
+    std::uniform_int_distribution<unsigned> bool_distribution(0, 1);
+
+    for (unsigned direction=0; direction<n_random_layers; direction++)
+    {
+        for (unsigned x=0; x<num_nodes; x++)
+        {
+            // Generate a random CNOT layer
+            bool should_place = bool_distribution(gen);
+            if ((__builtin_popcount(x) % 2)==0 && should_place)
+            {
+                unsigned random_target = random_direction(gen);
+                unsigned y = x ^ (1<<random_target);
+                apply_cnot(P,Red[x],Red[y]);
+                apply_cnot(P,Blue[x],Blue[y]);
+                apply_cnot(P,Green[x],Green[y]);
+            }
+        }
+
+        // random A/B blocks on the same layer
+        for (unsigned i=0; i<num_nodes; i++)
+        {
+            bool should_place = bool_distribution(gen);
+            if (!should_place) {
+                continue;
+            }
+            unsigned random_a_or_b_block = random_direction(gen);
+            apply_ccz(P,Red[i],Blue[i],Green[i]);
+            apply_cz(P,Red[i],Blue[i]);
+            apply_cz(P,Blue[i],Green[i]);
+            if (random_a_or_b_block % 2) apply_cz(P,Red[i],Green[i]);
         }
         
     }
@@ -455,7 +494,7 @@ std::chrono::nanoseconds run_sim(long unsigned s) {
     if (a.sign!=0) amplitude = 1.0*(a.sign)/(one<<(num_nodes-a.pow2));
     // iterate over gray code index of bit strings of length num_nodes
     // has to be a power of two to evenly divide the set
-    const unsigned long N_TASKS = 1 << 5;
+    const unsigned long N_TASKS = 1 << 9;
     std::future<double> futures[N_TASKS];
     for (unsigned long i = 0; i < N_TASKS; ++i) {
         unsigned long n_multiple = N / N_TASKS;
@@ -494,6 +533,7 @@ int main(int argc, const char* argv[])
     std::random_device rd;  
     std::mt19937 gen(rd()); 
     unsigned n_trials = 0;
+    unsigned random_layers = 10;
     if (argc < 2) {
         n_trials = 1000;
         cout<<"Running 1000 trials by default"<<endl;
@@ -502,6 +542,18 @@ int main(int argc, const char* argv[])
         n_trials = arg_trials;
         cout<<"Running " <<  arg_trials << "trials"<<endl;
     }
+
+    if (argc < 3) {
+        cout<<"Appending 10 random layers by default"<<endl;
+    } else {
+        unsigned arg_layers = std::stoul(argv[2]);
+        random_layers = arg_layers;
+        cout<<"Appending " <<  arg_layers << " random layers"<<endl;
+    }
+
+    
+    std::uniform_int_distribution<int> distribution(0, 1);
+
     std::vector<std::chrono::nanoseconds> results;
     for (unsigned i = 0; i < n_trials; i += 1) {
         unsigned long saturated_statevec = (1UL << num_qubits) - 1;
@@ -509,7 +561,7 @@ int main(int argc, const char* argv[])
         long unsigned s = distribution(gen);
         cout<<"Qubits="<<num_qubits<<endl;
         cout<<"output string s="<<s<<endl;
-	    results.push_back(run_sim(s));
+	    results.push_back(run_sim(s, random_layers));
     }
         // Calculate the sum of durations
     std::chrono::nanoseconds sum = std::chrono::nanoseconds::zero();
@@ -517,6 +569,6 @@ int main(int argc, const char* argv[])
         sum += duration;
     }
     std::chrono::nanoseconds average = sum / results.size();
-    double average_microseconds = static_cast<double>(average.count()) / 1000.0;
-    std::cout << "Average duration in microseconds: " << average_microseconds << std::endl;
+    double average_microseconds = static_cast<double>(average.count()) * 1e-9;
+    std::cout << "Average duration in seconds: " << average_microseconds << std::endl;
 }
