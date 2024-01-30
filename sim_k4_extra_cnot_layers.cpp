@@ -16,7 +16,6 @@
 #include <algorithm>
 #include <random>
 #include <string>
-#include <bitset>
 
 using std::endl;
 using std::cout;
@@ -25,15 +24,8 @@ using std::set;
 using std::vector;
 using std::pair;
 
-#ifdef __FLOAT128__
-using fp_type = __float128;
-#else
-using fp_type = double;
-#endif
-
-
 // dimension of the hypercube
-#define k 5
+#define k 4
 
 const long unsigned one = 1ul;
 
@@ -154,20 +146,22 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
     size_t pow2=0;
     bool sigma=0;
      
-    std::bitset<64> active{0xffffffffffffffffUL};
+    bool active[n];
+    for (size_t j=0; j<n; j++)
+        active[j]=true;
     
     unsigned nActive=n;
     
     while (nActive>=1)
     {
       // find the first active variable
-      unsigned i1;
+      size_t i1;
       for (i1=0; i1<n; i1++)
           if (active[i1])
               break;
       
       // find i2 such that M(i1,i2)!=M(i2,i1)
-      unsigned i2;
+      size_t i2;
       bool isFound=false;
       for (i2=0; i2<n; i2++)
       {
@@ -197,7 +191,7 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
            for (size_t j=0; j<n; j++)
                C.M[j]&=~(one<<i1);
            C.L&=~(one<<i1);
-           active[i1]=false;
+           active[i1]=0;
            continue;
          }
       }
@@ -247,8 +241,8 @@ clifford_amplitude ExponentialSumReal(clifford_circuit C)
       
       pow2+=1;
       sigma^=L1 & L2;
-      active[i1]=false;
-      active[i2]=false;      
+      active[i1]=0;
+      active[i2]=0;      
       nActive-=2;  
     }// while
 
@@ -286,11 +280,11 @@ unsigned qubit_index(unsigned qubit)
 }
 
 
-fp_type exponential_task(std::tuple<unsigned long, unsigned long> boundaries, clifford_circuit C, unsigned long sR, const unsigned long* P1, const unsigned long (*P2)[num_qubits_clif])
+double exponential_task(std::tuple<unsigned long, unsigned long> boundaries, clifford_circuit C, unsigned long sR, const unsigned long* P1, const unsigned long (*P2)[num_qubits_clif])
 { 
     unsigned long start = std::get<0>(boundaries);
     unsigned long end = std::get<1>(boundaries);
-    fp_type amplitude = 0.0;
+    double amplitude = 0.0;
     // initial circuit population
     if (start != 1) {
         long unsigned before_start = start - 1;
@@ -332,7 +326,7 @@ fp_type exponential_task(std::tuple<unsigned long, unsigned long> boundaries, cl
             // assert((num_nodes-a.pow2)>=0);
             if (a.sign!=0) {
                 int overlap = (__builtin_popcountl(sR & y) % 2);
-                fp_type amp_inc = ((a.sign)*(1-2*overlap)*(1.0/fp_type(one<<(num_nodes-a.pow2))));
+                double amp_inc = ((a.sign)*(1-2*overlap)*(1.0/double(one<<(num_nodes-a.pow2))));
                 // cout << "amplitude change on " << x << " from:(" << amplitude << ")" << endl;
                 // cout << "amp inc(" << amp_inc << "," << x << ")" << endl;
                 amplitude += amp_inc;
@@ -342,7 +336,7 @@ fp_type exponential_task(std::tuple<unsigned long, unsigned long> boundaries, cl
     return amplitude;
 }
 
-std::chrono::nanoseconds run_sim(std::bitset<num_qubits> s, unsigned n_random_layers) {
+std::chrono::nanoseconds run_sim(long unsigned s) {
     auto begin = std::chrono::high_resolution_clock::now();
 
     // partition 3*2^k qubits into red, blue, and green. There are 2^k qubits of each color.
@@ -403,54 +397,15 @@ std::chrono::nanoseconds run_sim(std::bitset<num_qubits> s, unsigned n_random_la
         
     }
 
-    // generate N random layers
-    std::random_device rd;
-    std::mt19937 gen(rd());
-
-    std::uniform_int_distribution<unsigned> random_direction(0, k - 1);
-    std::uniform_int_distribution<unsigned> bool_distribution(0, 1);
-
-    for (unsigned direction=0; direction<n_random_layers; direction++)
-    {
-        for (unsigned x=0; x<num_nodes; x++)
-        {
-            // Generate a random CNOT layer
-            bool should_place = bool_distribution(gen);
-            if ((__builtin_popcount(x) % 2)==0 && should_place)
-            {
-                unsigned random_target = random_direction(gen);
-                unsigned y = x ^ (1<<random_target);
-                apply_cnot(P,Red[x],Red[y]);
-                apply_cnot(P,Blue[x],Blue[y]);
-                apply_cnot(P,Green[x],Green[y]);
-            }
-        }
-
-        // random A/B blocks on the same layer
-        for (unsigned i=0; i<num_nodes; i++)
-        {
-            bool should_place = bool_distribution(gen);
-            if (!should_place) {
-                continue;
-            }
-            unsigned random_a_or_b_block = random_direction(gen);
-            apply_ccz(P,Red[i],Blue[i],Green[i]);
-            apply_cz(P,Red[i],Blue[i]);
-            apply_cz(P,Blue[i],Green[i]);
-            if (random_a_or_b_block % 2) apply_cz(P,Red[i],Green[i]);
-        }
-        
-    }
-
     // project s onto red, blue, and green qubits
     long unsigned sR = 0ul;
     long unsigned sB = 0ul;
     long unsigned sG = 0ul;
     for (unsigned i=0; i<num_nodes; i++)
     {
-        sR^= s[3*i]<<i;
-        sB^= s[3*i+1]<<i;
-        sG^= s[3*i+2]<<i;
+        sR^= ((s>>(3*i)) & one)<<i;
+        sB^= ((s>>(3*i+1)) & one)<<i;
+        sG^= ((s>>(3*i+2)) & one)<<i;
     }
 
     // initial -H-CZ-Z-H- circuit on blue+green qubits. All red qubits are set to zero.
@@ -496,12 +451,12 @@ std::chrono::nanoseconds run_sim(std::bitset<num_qubits> s, unsigned n_random_la
     long unsigned N = one<<num_nodes;
 
     clifford_amplitude a = ExponentialSumReal(C);
-    fp_type amplitude = 0.0;
+    double amplitude = 0.0;
     if (a.sign!=0) amplitude = 1.0*(a.sign)/(one<<(num_nodes-a.pow2));
     // iterate over gray code index of bit strings of length num_nodes
     // has to be a power of two to evenly divide the set
-    const unsigned long N_TASKS = 1 << 9;
-    std::future<fp_type> futures[N_TASKS];
+    const unsigned long N_TASKS = 1 << 5;
+    std::future<double> futures[N_TASKS];
     for (unsigned long i = 0; i < N_TASKS; ++i) {
         unsigned long n_multiple = N / N_TASKS;
         unsigned long start;
@@ -539,7 +494,6 @@ int main(int argc, const char* argv[])
     std::random_device rd;  
     std::mt19937 gen(rd()); 
     unsigned n_trials = 0;
-    unsigned random_layers = 10;
     if (argc < 2) {
         n_trials = 1000;
         cout<<"Running 1000 trials by default"<<endl;
@@ -548,27 +502,14 @@ int main(int argc, const char* argv[])
         n_trials = arg_trials;
         cout<<"Running " <<  arg_trials << "trials"<<endl;
     }
-
-    if (argc < 3) {
-        cout<<"Appending 10 random layers by default"<<endl;
-    } else {
-        unsigned arg_layers = std::stoul(argv[2]);
-        random_layers = arg_layers;
-        cout<<"Appending " <<  arg_layers << " random layers"<<endl;
-    }
-
-    
-    std::uniform_int_distribution<int> distribution(0, 1);
-
     std::vector<std::chrono::nanoseconds> results;
     for (unsigned i = 0; i < n_trials; i += 1) {
-        std::bitset<num_qubits> s;
-        for (size_t i = 0; i < num_qubits; ++i) {
-            s[i] = distribution(gen);
-        }
+        unsigned long saturated_statevec = (1UL << num_qubits) - 1;
+        std::uniform_int_distribution<unsigned long> distribution(0, saturated_statevec);
+        long unsigned s = distribution(gen);
         cout<<"Qubits="<<num_qubits<<endl;
         cout<<"output string s="<<s<<endl;
-	    results.push_back(run_sim(s, random_layers));
+	    results.push_back(run_sim(s));
     }
         // Calculate the sum of durations
     std::chrono::nanoseconds sum = std::chrono::nanoseconds::zero();
@@ -576,6 +517,6 @@ int main(int argc, const char* argv[])
         sum += duration;
     }
     std::chrono::nanoseconds average = sum / results.size();
-    double average_microseconds = static_cast<double>(average.count()) * 1e-9;
-    std::cout << "Average duration in seconds: " << average_microseconds << std::endl;
+    double average_microseconds = static_cast<double>(average.count()) / 1000.0;
+    std::cout << "Average duration in microseconds: " << average_microseconds << std::endl;
 }
