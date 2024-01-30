@@ -22,7 +22,7 @@ ex_k5_random : sim_k5_random.cpp $(DEPS)
 	${CC} ${CFLAGS} sim_k5_random.cpp -o $@ -lpthread
 
 ex_k5_extra_cnot_layers : sim_k5_extra_cnot_layers.cpp $(DEPS)
-	${CC} ${CFLAGS} sim_k5_random.cpp -o $@ -lpthread
+	${CC} ${CFLAGS} sim_k5_extra_cnot_layers.cpp -o $@ -lpthread
 
 clean :
 	rm ex ex_parallel ex_k4_worst_case ex_k5_worst_case ex_k4_random ex_k5_random ex_k5_extra_cnot_layers
