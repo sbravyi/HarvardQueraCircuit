@@ -291,7 +291,7 @@ print('Done')
 
 
 # pick random output basis vector |s>
-s = to_binary(n,123)
+s = to_binary(n,267058346340840)
 sR = s[Red]
 sB = s[Blue]
 sG = s[Green]

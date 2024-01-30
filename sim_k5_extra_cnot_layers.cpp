@@ -407,7 +407,7 @@ std::chrono::nanoseconds run_sim(std::bitset<num_qubits> s, unsigned n_random_la
     std::random_device rd;
     std::mt19937 gen(rd());
 
-    std::uniform_int_distribution<unsigned> random_direction(0, n_random_layers);
+    std::uniform_int_distribution<unsigned> random_direction(0, k - 1);
     std::uniform_int_distribution<unsigned> bool_distribution(0, 1);
 
     for (unsigned direction=0; direction<n_random_layers; direction++)
