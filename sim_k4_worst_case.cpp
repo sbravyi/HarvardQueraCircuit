@@ -389,17 +389,25 @@ for (unsigned direction=0; direction<k; direction++)
         }
     }
 
-    // alternate between layers of A or B rectangles, see page 29 in 
-    // https://arxiv.org/pdf/2312.03982.pdf
-    // some A/B rectangles acting on nodes with even parity cancel each other
-    for (unsigned i=0; i<num_nodes; i++)
-    {
-        apply_ccz(P,Red[i],Blue[i],Green[i]);
-        apply_cz(P,Red[i],Blue[i]);
-        apply_cz(P,Blue[i],Green[i]);
-        if (direction % 2) apply_cz(P,Red[i],Green[i]);
-        // we ignore pauli Z gates since they can be absorbed into a Pauli frame
-    }
+        // alternate between layers of A or B rectangles, see page 29 in 
+        // https://arxiv.org/pdf/2312.03982.pdf
+        // some A/B rectangles acting on nodes with even parity cancel each other
+        for (unsigned i=0; i<num_nodes; i++)
+        {
+            apply_ccz(P,Red[i],Blue[i],Green[i]);
+            apply_cz(P,Red[i],Blue[i]);
+            apply_cz(P,Blue[i],Green[i]);
+            // applying the special asymmetry on the second layer, where
+            // the top half is A rectangles, but the bottom half is B.
+            if (direction == 1) {
+                if (i < num_nodes / 2 ) {
+                    apply_cz(P,Red[i],Green[i]);
+                }
+            } else {
+                if (direction % 2) apply_cz(P,Red[i],Green[i]);
+            }
+            // we ignore pauli Z gates since they can be absorbed into a Pauli frame
+        }
     
 }
 

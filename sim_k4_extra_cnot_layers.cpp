@@ -44,7 +44,7 @@ const long unsigned one = 1ul;
 // each element of the inner set defines a variable in the monomial
 typedef set<set<unsigned> > phase_poly;
 
-// for generating N random layers
+// generate N random layers
 std::random_device rd;
 std::mt19937 gen(rd());
 
@@ -488,7 +488,7 @@ std::chrono::nanoseconds run_sim(long unsigned s, unsigned n_random_layers) {
     if (a.sign!=0) amplitude = 1.0*(a.sign)/(one<<(num_nodes-a.pow2));
     // iterate over gray code index of bit strings of length num_nodes
     // has to be a power of two to evenly divide the set
-    const unsigned long N_TASKS = 1 << 9;
+    const unsigned long N_TASKS = 1 << 5;
     std::future<double> futures[N_TASKS];
     for (unsigned long i = 0; i < N_TASKS; ++i) {
         unsigned long n_multiple = N / N_TASKS;
