@@ -402,15 +402,13 @@ std::chrono::nanoseconds run_sim(long unsigned s, unsigned n_random_layers) {
     std::mt19937 gen(rd());
 
     std::uniform_int_distribution<unsigned> random_direction(0, k - 1);
-    std::uniform_int_distribution<unsigned> bool_distribution(0, 1);
 
     for (unsigned direction=0; direction<n_random_layers; direction++)
     {
         for (unsigned x=0; x<num_nodes; x++)
         {
             // Generate a random CNOT layer
-            bool should_place = bool_distribution(gen);
-            if ((__builtin_popcount(x) % 2)==0 && should_place)
+            if ((__builtin_popcount(x) % 2)==0)
             {
                 unsigned random_target = random_direction(gen);
                 unsigned y = x ^ (1<<random_target);
@@ -423,10 +421,6 @@ std::chrono::nanoseconds run_sim(long unsigned s, unsigned n_random_layers) {
         // random A/B blocks on the same layer
         for (unsigned i=0; i<num_nodes; i++)
         {
-            bool should_place = bool_distribution(gen);
-            if (!should_place) {
-                continue;
-            }
             unsigned random_a_or_b_block = random_direction(gen);
             apply_ccz(P,Red[i],Blue[i],Green[i]);
             apply_cz(P,Red[i],Blue[i]);

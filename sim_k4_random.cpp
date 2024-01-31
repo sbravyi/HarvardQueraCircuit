@@ -391,7 +391,15 @@ std::chrono::nanoseconds run_sim(long unsigned s) {
             apply_ccz(P,Red[i],Blue[i],Green[i]);
             apply_cz(P,Red[i],Blue[i]);
             apply_cz(P,Blue[i],Green[i]);
-            if (direction % 2) apply_cz(P,Red[i],Green[i]);
+            // applying the special asymmetry on the second layer, where
+            // the top half is A rectangles, but the bottom half is B.
+            if (direction == 1) {
+                if (i < num_nodes / 2 ) {
+                    apply_cz(P,Red[i],Green[i]);
+                }
+            } else {
+                if (direction % 2) apply_cz(P,Red[i],Green[i]);
+            }
             // we ignore pauli Z gates since they can be absorbed into a Pauli frame
         }
         
