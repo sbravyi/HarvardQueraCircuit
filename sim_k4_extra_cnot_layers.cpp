@@ -44,6 +44,12 @@ const long unsigned one = 1ul;
 // each element of the inner set defines a variable in the monomial
 typedef set<set<unsigned> > phase_poly;
 
+// for generating N random layers
+std::random_device rd;
+std::mt19937 gen(rd());
+
+std::uniform_int_distribution<unsigned> random_direction(0, k - 1);
+
 // toggle the coefficient of a given monomial in the phase polynomial P
 void toggle(phase_poly &P, set<unsigned> monomial)
 {
@@ -396,12 +402,6 @@ std::chrono::nanoseconds run_sim(long unsigned s, unsigned n_random_layers) {
         }
         
     }
-
-    // generate N random layers
-    std::random_device rd;
-    std::mt19937 gen(rd());
-
-    std::uniform_int_distribution<unsigned> random_direction(0, k - 1);
 
     for (unsigned direction=0; direction<n_random_layers; direction++)
     {
