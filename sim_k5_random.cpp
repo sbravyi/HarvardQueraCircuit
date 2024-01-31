@@ -528,6 +528,6 @@ int main(int argc, const char* argv[])
         sum += duration;
     }
     std::chrono::nanoseconds average = sum / results.size();
-    double average_microseconds = static_cast<double>(average.count()) * 1e-9;
-    std::cout << "Average duration in seconds: " << average_microseconds << std::endl;
+    double average_seconds = static_cast<double>(average.count()) * 1e-9;
+    std::cout << "Average duration in seconds: " << average_seconds << std::endl;
 }
