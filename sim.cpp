@@ -101,7 +101,7 @@ struct clifford_amplitude
 };
 
 // Clifford circuit of the form H-CZ-Z-H with n<=64 qubits
-// Here H denotes biwise Hadamard
+// Here H denotes bitwise Hadamard
 // L parameterizes -Z- layer; Apply Z to i-th qubit if ((L>>i) & 1)==1
 // M parameterizes -CZ- layer; Apply CZ to i-th and j-th qubit if ((M[i]>>j) & 1)==1
 struct clifford_circuit
@@ -317,14 +317,14 @@ for (unsigned i=0; i<num_nodes; i++)
     apply_cz(P,Red[i],Blue[i]);
     apply_cz(P,Blue[i],Green[i]);
     apply_cz(P,Red[i],Green[i]);
-    // we ignore pauli Z gates since they can be absorbed into a Pauli frame
+    // we ignore Pauli Z gates since they can be absorbed into a Pauli frame
 }
 
 
 for (unsigned direction=0; direction<k; direction++)
 {
     // apply CNOTs oriented along this direction on the cube
-    // cube nodes with even pariry = control qubits
+    // cube nodes with even parity = control qubits
     // cube nodes with odd parity = target qubits
     for (unsigned x=0; x<num_nodes; x++)
     {
@@ -346,7 +346,7 @@ for (unsigned direction=0; direction<k; direction++)
         apply_cz(P,Red[i],Blue[i]);
         apply_cz(P,Blue[i],Green[i]);
         if (direction % 2) apply_cz(P,Red[i],Green[i]);
-        // we ignore pauli Z gates since they can be absorbed into a Pauli frame
+        // we ignore Pauli Z gates since they can be absorbed into a Pauli frame
     }
     
 }
