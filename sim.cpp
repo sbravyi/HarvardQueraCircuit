@@ -1,4 +1,4 @@
-// computes output amplitude <s|U|00...0> where U is QuEra-Harward circuit
+// computes output amplitude <s|U|00...0> where U is QuEra-Harvard circuit
 // acting on 3*2^k qubits
 //
 // define k at line 22; define s at line 358
