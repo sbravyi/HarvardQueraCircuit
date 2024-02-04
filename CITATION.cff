@@ -1,0 +1,31 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: Harvard/QuEra Phase Polynomial Circuit Simulation
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Sergey
+    family-names: Bravyi
+    affiliation: IBM Research
+    orcid: 'https://orcid.org/0000-0002-4032-470X'
+    email: sbravyi@us.ibm.com
+  - given-names: Felix
+    family-names: Tripier
+    email: tripier@ionq.co
+    affiliation: IonQ
+identifiers:
+  - type: url
+    value: >-
+      https://github.com/sbravyi/HarvardQueraCircuit/tree/tuning-cpp-sims
+    description: GitHub repository
+repository-code: >-
+  https://github.com/sbravyi/HarvardQueraCircuit/tree/tuning-cpp-sims
+abstract: >-
+  H-CZ-Z-H circuit simulation using phase polynomial
+  representation of IQP circuits used as part of
+  Harvard/QuEra's fault tolerance demonstration in 2023.
+license: MIT
